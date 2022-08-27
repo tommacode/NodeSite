@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@200;400;600&display=swap"
+      rel="stylesheet"
+    />
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="/index.css" />
+    <title>Tom Blake</title>
+    <!--Meta Tags-->
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:domain" content="tomblake.me" />
+    <meta
+      name="twitter:title"
+      property="og:title"
+      itemprop="name"
+      content="The webite made by Tom, for Tom"
+    />
+    <meta
+      name="twitter:description"
+      property="og:description"
+      itemprop="description"
+      content="A one page site that says a lot about what I do and who I am"
+    />
+    <style>
+      * {
+        margin: 0;
+        font-family: "Poppins", sans-serif;
+      }
+
+      html {
+        --border-thickness: 5px;
+        --vert-margins: 2.5vh;
+        background-color: hsla(0, 0%, 0%, 1);
+        background-image: radial-gradient(
+            at 40% 20%,
+            hsla(22, 85%, 4%, 1) 0px,
+            transparent 50%
+          ),
+          radial-gradient(
+            at 98% 5%,
+            hsla(201, 100%, 15%, 1) 0px,
+            transparent 50%
+          ),
+          radial-gradient(
+            at 0% 50%,
+            hsla(228, 100%, 24%, 1) 0px,
+            transparent 50%
+          ),
+          radial-gradient(
+            at 80% 50%,
+            hsla(338, 89%, 7%, 1) 0px,
+            transparent 50%
+          ),
+          radial-gradient(
+            at 0% 100%,
+            hsla(215, 100%, 28%, 1) 0px,
+            transparent 50%
+          ),
+          radial-gradient(
+            at 80% 100%,
+            hsla(240, 100%, 8%, 1) 0px,
+            transparent 50%
+          );
+      }
+
+      .linkBar {
+        list-style-type: none;
+        margin-top: 2vh;
+        position: sticky;
+      }
+
+      .linkBar li {
+        display: inline-block;
+        padding-right: 2vw;
+        font-size: 1.125rem;
+        padding-top: 0;
+        font-weight: 400;
+      }
+
+      .listLink {
+        text-decoration: none;
+        color: white;
+      }
+
+      body {
+        min-height: 100vh;
+        color: white;
+        width: 50%;
+        margin-left: 25%;
+        font-size: 20px;
+        font-weight: 200;
+      }
+
+      header h1 {
+        font-size: 3em;
+        font-weight: 600;
+        line-height: 1em;
+      }
+
+      header h3 {
+        font-weight: 200;
+        line-height: 25px;
+        font-size: 1.25em;
+      }
+
+      #bio,
+      #skills,
+      #projects,
+      #footer {
+        margin-top: 5vh;
+        border-bottom: var(--border-thickness) solid white;
+        border-top: var(--border-thickness) solid white;
+        border-radius: 10px;
+        padding-top: var(--vert-margins);
+        padding-bottom: var(--vert-margins);
+        line-height: 1.125em;
+      }
+
+      h3 {
+        padding-bottom: 1vh;
+      }
+
+      #footer {
+        text-align: center;
+      }
+
+      li p {
+        padding-left: 5vw;
+        font-weight: 200;
+        padding-bottom: 1.5vh;
+        font-size: 1em;
+      }
+
+      li {
+        font-weight: 400;
+        padding-top: 1vh;
+      }
+
+      button.clearBtn {
+        background: none;
+        border: none;
+        color: white;
+        float: right;
+        font-size: 0.875rem;
+      }
+
+      .hidden {
+        display: none;
+      }
+
+      nav ul {
+        list-style-type: none;
+        display: flex;
+        text-align: right;
+      }
+
+      nav ul li a {
+        padding: 0;
+        margin: 0;
+        color: white;
+        text-decoration: none;
+        font-weight: 200;
+        padding-left: 5vw;
+      }
+
+      /* Media Queries */
+      @media only screen and (max-width: 800px) {
+        body {
+          width: 80%;
+          padding-left: 10%;
+        }
+      }
+      @media only screen and (max-width: 600px) {
+        header h1 {
+          font-size: 3.5rem;
+        }
+        body {
+          width: 96%;
+          padding-left: 2%;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="frosted">
+      <nav>
+        <ul>
+          <li><a href="/contact">Contact Me</a></li>
+          <li><a href="/projects">Home</a></li>
+        </ul>
+      </nav>
+      <!--Big header to draw attention-->
+      <header>
+        <h1>Projects</h1>
+      </header>
+      <button id="reset1" class="clearBtn" onclick="ResetAll()">
+        Reset All
+      </button>
+      <!--Project Thumbnails-->
+      <div id="projects">
+        <div>
+          <p style="float: right">Date</p>
+          <h3>Placeholder Title</h3>
+          <p>Loreum ipsum</p>
+        </div>
+      </div>
+      <div id="footer">
+        <h3>Footer</h3>
+        <!--Links-->
+        <ul class="linkBar">
+          <li>
+            <a
+              target="_blank"
+              href="https://github.com/tommacode"
+              class="listLink"
+              >My Github</a
+            >
+          </li>
+          <li>
+            <a
+              target="_blank"
+              href="https://tomhasawebsite.com"
+              class="listLink"
+              >Other Website</a
+            >
+          </li>
+          <li><a href="#" class="listLink">Back to the top!</a></li>
+        </ul>
+      </div>
+      <script>
+        //Send Get request to load the bio
+        http = new XMLHttpRequest();
+        http.open("GET", "/text/bio", true);
+        http.send();
+        http.onreadystatechange = function () {
+          if (this.readyState == 4 && this.status == 200) {
+            document.getElementById("bio-text").innerHTML = this.responseText;
+          } else {
+            document.getElementById("bio-text").innerHTML = "Error loading bio";
+          }
+        };
+      </script>
+    </div>
+  </body>
+</html>
