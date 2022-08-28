@@ -1,10 +1,88 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@200;400;600&display=swap"
+      rel="stylesheet"
+    />
     <meta charset="UTF-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Document</title>
+    <link rel="stylesheet" href="/index.css" />
+    <title>Add/Edit articles</title>
+    <link rel="stylesheet" href="css.css" />
   </head>
-  <body></body>
+  <body>
+    <div id="frosted">
+      <nav>
+        <ul>
+          <li><a href="/">Home</a></li>
+          <li><a href="/contact">Contact Me</a></li>
+          <li><a href="/projects">Projects</a></li>
+        </ul>
+      </nav>
+      <!--Big header to draw attention-->
+      <header>
+        <h1>Create article</h1>
+        <h3>Create another article</h3>
+      </header>
+      <button id="reset1" class="clearBtn" onclick="ResetAll()">
+        Reset All
+      </button>
+      <div id="create">
+        <form action="/createArticle" method="POST">
+          <input type="text" name="title" id="title" placeholder="Title" />
+          <br />
+          <textarea placeholder="Content" style="width: 35vw"></textarea>
+          <br />
+          <input
+            type="text"
+            id="tags"
+            placeholder="Tags (Separate by commas)"
+            style="width: 25vw"
+          />
+          <br />
+          <input type="submit" value="Create" />
+        </form>
+      </div>
+      <div id="footer">
+        <h3>Footer</h3>
+        <!--Links-->
+        <ul class="linkBar">
+          <li>
+            <a
+              target="_blank"
+              href="https://github.com/tommacode"
+              class="listLink"
+              >My Github</a
+            >
+          </li>
+          <li>
+            <a
+              target="_blank"
+              href="https://tomhasawebsite.com"
+              class="listLink"
+              >Other Website</a
+            >
+          </li>
+          <li><a href="#" class="listLink">Back to the top!</a></li>
+        </ul>
+      </div>
+      <script>
+        //Send Get request to load the bio
+        http = new XMLHttpRequest();
+        http.open("GET", "/text/bio", true);
+        http.send();
+        http.onreadystatechange = function () {
+          if (this.readyState == 4 && this.status == 200) {
+            document.getElementById("bio-text").innerHTML = this.responseText;
+          } else {
+            document.getElementById("bio-text").innerHTML = "Error loading bio";
+          }
+        };
+      </script>
+    </div>
+  </body>
 </html>

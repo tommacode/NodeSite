@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+    <style>
+      body {
+        background-color: #333;
+      }
+      * {
+        --primary: #fff;
+        --secondary: #fff;
+      }
+      .dots:before {
+        display: block;
+        height: 5px;
+        width: 5px;
+        content: "";
+        -webkit-animation: spin 1s infinite;
+        animation: spin 1s infinite;
+        border-radius: 100%;
+        -webkit-box-shadow: 20px 0 0 5px var(--primary),
+          -20px 0 0 5px var(--primary);
+        box-shadow: 20px 0 0 5px var(--primary), -20px 0 0 5px var(--primary);
+      }
+
+      @-webkit-keyframes spin {
+        to {
+          -webkit-transform: rotate(360deg);
+          transform: rotate(360deg);
+        }
+      }
+
+      @keyframes spin {
+        to {
+          -webkit-transform: rotate(360deg);
+          transform: rotate(360deg);
+        }
+      }
+      #loadingScreen {
+        padding-top: 50vh;
+      }
+      #content {
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <center>
+      <div id="loadingScreen">
+        <div class="dots"></div>
+        <h1>Loading</h1>
+      </div>
+    </center>
+    <div id="content">
+      <h1>Loreum Ipsum</h1>
+      <p>Lorem ipsum delore stuff for the good time</p>
+    </div>
+    <script>
+      //Wait for 2 secs
+      setTimeout(function () {
+        //Show the content
+        document.getElementById("content").style.display = "block";
+        //Hide the loading screen
+        document.getElementById("loadingScreen").style.display = "none";
+      }, 2000);
+    </script>
+  </body>
+</html>

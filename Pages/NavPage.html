@@ -27,169 +27,16 @@
       itemprop="description"
       content="A one page site that says a lot about what I do and who I am"
     />
-    <style>
-      * {
-        margin: 0;
-        font-family: "Poppins", sans-serif;
-      }
-
-      html {
-        --border-thickness: 5px;
-        --vert-margins: 2.5vh;
-        background-color: hsla(0, 0%, 0%, 1);
-        background-image: radial-gradient(
-            at 40% 20%,
-            hsla(22, 85%, 4%, 1) 0px,
-            transparent 50%
-          ),
-          radial-gradient(
-            at 98% 5%,
-            hsla(201, 100%, 15%, 1) 0px,
-            transparent 50%
-          ),
-          radial-gradient(
-            at 0% 50%,
-            hsla(228, 100%, 24%, 1) 0px,
-            transparent 50%
-          ),
-          radial-gradient(
-            at 80% 50%,
-            hsla(338, 89%, 7%, 1) 0px,
-            transparent 50%
-          ),
-          radial-gradient(
-            at 0% 100%,
-            hsla(215, 100%, 28%, 1) 0px,
-            transparent 50%
-          ),
-          radial-gradient(
-            at 80% 100%,
-            hsla(240, 100%, 8%, 1) 0px,
-            transparent 50%
-          );
-      }
-
-      .linkBar {
-        list-style-type: none;
-        margin-top: 2vh;
-        position: sticky;
-      }
-
-      .linkBar li {
-        display: inline-block;
-        padding-right: 2vw;
-        font-size: 1.125rem;
-        padding-top: 0;
-        font-weight: 400;
-      }
-
-      .listLink {
-        text-decoration: none;
-        color: white;
-      }
-
-      body {
-        min-height: 100vh;
-        color: white;
-        width: 50%;
-        margin-left: 25%;
-        font-size: 20px;
-        font-weight: 200;
-      }
-
-      header h1 {
-        font-size: 3em;
-        font-weight: 600;
-        line-height: 1em;
-      }
-
-      header h3 {
-        font-weight: 200;
-        line-height: 25px;
-        font-size: 1.25em;
-      }
-
-      #bio,
-      #skills,
-      #projects,
-      #footer {
-        margin-top: 5vh;
-        border-bottom: var(--border-thickness) solid white;
-        border-top: var(--border-thickness) solid white;
-        border-radius: 10px;
-        padding-top: var(--vert-margins);
-        padding-bottom: var(--vert-margins);
-        line-height: 1.125em;
-      }
-
-      h3 {
-        padding-bottom: 1vh;
-      }
-
-      #footer {
-        text-align: center;
-      }
-
-      li p {
-        padding-left: 5vw;
-        font-weight: 200;
-        padding-bottom: 1.5vh;
-        font-size: 1em;
-      }
-
-      li {
-        font-weight: 400;
-        padding-top: 1vh;
-      }
-
-      button.clearBtn {
-        background: none;
-        border: none;
-        color: white;
-        float: right;
-        font-size: 0.875rem;
-      }
-
-      .hidden {
-        display: none;
-      }
-
-      nav ul {
-        list-style-type: none;
-        display: flex;
-        text-align: right;
-        float: right;
-      }
-
-      nav ul li a {
-        padding: 0;
-        margin: 0;
-        color: white;
-        text-decoration: none;
-        font-weight: 200;
-        padding-left: 5vw;
-      }
-
-      /* Media Queries */
-      @media only screen and (max-width: 800px) {
-        body {
-          width: 80%;
-          padding-left: 10%;
-        }
-      }
-      @media only screen and (max-width: 600px) {
-        header h1 {
-          font-size: 3.5rem;
-        }
-        body {
-          width: 96%;
-          padding-left: 2%;
-        }
-      }
-    </style>
+    <link rel="stylesheet" href="css.css" />
   </head>
   <body>
-    <div id="frosted">
+    <center>
+      <div id="LoadingScreen">
+        <div class="dots"></div>
+        <p>Loading epic content</p>
+      </div>
+    </center>
+    <div id="content">
       <nav>
         <ul>
           <li><a href="/contact">Contact Me</a></li>
@@ -235,48 +82,14 @@
         </ul>
       </div>
       <script>
-        //Send Get request to get the projects and some of their data
-        var http = new XMLHttpRequest();
-        http.open("GET", "/text/projectsPreview", true);
-        http.send();
-        http.onreadystatechange = function () {
-          if (this.readyState == 4 && this.status == 200) {
-            var data = JSON.parse(this.responseText);
-            var projects = document.getElementById("projects");
-            for (var i = 0; i < data.length; i++) {
-              var div = document.createElement("div");
-              div.className = "project";
-              div.id = data[i].id;
-              div.style.backgroundSize = "cover";
-              div.style.backgroundPosition = "center";
-              div.style.backgroundRepeat = "no-repeat";
-              div.style.height = "100%";
-              div.style.width = "100%";
-              div.style.position = "relative";
-              div.style.display = "inline-block";
-              div.style.margin = "0";
-              div.style.padding = "0";
-              div.style.boxSizing = "border-box";
-              div.style.transition = "all 0.5s ease-in-out";
-              div.style.cursor = "pointer";
-              div.style.overflow = "hidden";
-              div.style.borderRadius = "10px";
-              div.style.border = "var(--border-thickness) solid white";
-              div.style.backgroundColor = "hsla(0, 0%, 0%, 0.5)";
-              div.style.color = "white";
-              div.style.textAlign = "center";
-              div.style.verticalAlign = "middle";
-              div.style.fontSize = "1.5em";
-              div.style.fontWeight = "600";
-              div.style.paddingTop = "2vh";
-              div.style.paddingBottom = "2vh";
-              div.style.paddingLeft = "5vw";
-              div.style.paddingRight = "5vw";
-              div.style.marginTop = "5vh";
-              div.style.marginBottom = "5vh";
-            }
-          }
-        };
+        //wait for a few seconds then hide the loading screen and show the content
+        function HideLoadingScreen() {
+          document.getElementById("content").style.display = "block";
+          document.getElementById("LoadingScreen").style.display = "none";
+        }
+        setTimeout(function () {
+          HideLoadingScreen();
+        }, 2000);
       </script>
     </div>
   </body>
