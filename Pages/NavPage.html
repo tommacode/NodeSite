@@ -158,6 +158,7 @@
         list-style-type: none;
         display: flex;
         text-align: right;
+        float: right;
       }
 
       nav ul li a {
@@ -234,15 +235,46 @@
         </ul>
       </div>
       <script>
-        //Send Get request to load the bio
-        http = new XMLHttpRequest();
-        http.open("GET", "/text/bio", true);
+        //Send Get request to get the projects and some of their data
+        var http = new XMLHttpRequest();
+        http.open("GET", "/text/projectsPreview", true);
         http.send();
         http.onreadystatechange = function () {
           if (this.readyState == 4 && this.status == 200) {
-            document.getElementById("bio-text").innerHTML = this.responseText;
-          } else {
-            document.getElementById("bio-text").innerHTML = "Error loading bio";
+            var data = JSON.parse(this.responseText);
+            var projects = document.getElementById("projects");
+            for (var i = 0; i < data.length; i++) {
+              var div = document.createElement("div");
+              div.className = "project";
+              div.id = data[i].id;
+              div.style.backgroundSize = "cover";
+              div.style.backgroundPosition = "center";
+              div.style.backgroundRepeat = "no-repeat";
+              div.style.height = "100%";
+              div.style.width = "100%";
+              div.style.position = "relative";
+              div.style.display = "inline-block";
+              div.style.margin = "0";
+              div.style.padding = "0";
+              div.style.boxSizing = "border-box";
+              div.style.transition = "all 0.5s ease-in-out";
+              div.style.cursor = "pointer";
+              div.style.overflow = "hidden";
+              div.style.borderRadius = "10px";
+              div.style.border = "var(--border-thickness) solid white";
+              div.style.backgroundColor = "hsla(0, 0%, 0%, 0.5)";
+              div.style.color = "white";
+              div.style.textAlign = "center";
+              div.style.verticalAlign = "middle";
+              div.style.fontSize = "1.5em";
+              div.style.fontWeight = "600";
+              div.style.paddingTop = "2vh";
+              div.style.paddingBottom = "2vh";
+              div.style.paddingLeft = "5vw";
+              div.style.paddingRight = "5vw";
+              div.style.marginTop = "5vh";
+              div.style.marginBottom = "5vh";
+            }
           }
         };
       </script>
