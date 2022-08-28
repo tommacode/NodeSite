@@ -10,7 +10,6 @@
     <meta charset="UTF-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="stylesheet" href="/index.css" />
     <title>Tom Blake</title>
     <!--Meta Tags-->
     <meta name="twitter:card" content="summary" />
@@ -27,9 +26,198 @@
       itemprop="description"
       content="Read the full article on Tomblake.me /articles"
     />
-    <link rel="stylesheet" href="css.css" />
+    <style>
+      * {
+        margin: 0;
+        font-family: "Poppins", sans-serif;
+        z-index: 0;
+      }
+
+      #content {
+        display: none;
+      }
+
+      html {
+        --border-thickness: 5px;
+        --vert-margins: 2.5vh;
+        background-color: hsla(0, 0%, 0%, 1);
+        background-image: radial-gradient(
+            at 40% 20%,
+            hsla(22, 85%, 4%, 1) 0px,
+            transparent 50%
+          ),
+          radial-gradient(
+            at 98% 5%,
+            hsla(201, 100%, 15%, 1) 0px,
+            transparent 50%
+          ),
+          radial-gradient(
+            at 0% 50%,
+            hsla(228, 100%, 24%, 1) 0px,
+            transparent 50%
+          ),
+          radial-gradient(
+            at 80% 50%,
+            hsla(338, 89%, 7%, 1) 0px,
+            transparent 50%
+          ),
+          radial-gradient(
+            at 0% 100%,
+            hsla(215, 100%, 28%, 1) 0px,
+            transparent 50%
+          ),
+          radial-gradient(
+            at 80% 100%,
+            hsla(240, 100%, 8%, 1) 0px,
+            transparent 50%
+          );
+      }
+      .linkBar {
+        list-style-type: none;
+        margin-top: 2vh;
+        position: sticky;
+      }
+      .linkBar li {
+        display: inline-block;
+        padding-right: 2vw;
+        font-size: 1.125rem;
+        padding-top: 0;
+        font-weight: 400;
+      }
+      .listLink {
+        text-decoration: none;
+        color: white;
+      }
+      body {
+        min-height: 100vh;
+        color: white;
+        width: 50%;
+        margin-left: 25%;
+        font-size: 20px;
+        font-weight: 200;
+      }
+      header h1 {
+        font-size: 3em;
+        font-weight: 600;
+        line-height: 1em;
+      }
+      header h3 {
+        font-weight: 200;
+        line-height: 25px;
+        font-size: 1.25em;
+      }
+      #bio,
+      #skills,
+      #projects,
+      #footer,
+      #create {
+        margin-top: 5vh;
+        border-bottom: var(--border-thickness) solid white;
+        border-top: var(--border-thickness) solid white;
+        border-radius: 10px;
+        padding-top: var(--vert-margins);
+        padding-bottom: var(--vert-margins);
+        line-height: 1.125em;
+      }
+      h3 {
+        padding-bottom: 1vh;
+      }
+      #footer {
+        text-align: center;
+      }
+      li p {
+        padding-left: 5vw;
+        font-weight: 200;
+        padding-bottom: 1.5vh;
+        font-size: 1em;
+      }
+      li {
+        font-weight: 400;
+        padding-top: 1vh;
+      }
+      button.clearBtn {
+        background: none;
+        border: none;
+        color: white;
+        float: right;
+        font-size: 0.875rem;
+      }
+      .hidden {
+        display: none;
+      }
+      nav ul {
+        list-style-type: none;
+        display: flex;
+        text-align: right;
+        float: right;
+      }
+      nav ul li a {
+        padding: 0;
+        margin: 0;
+        color: white;
+        text-decoration: none;
+        font-weight: 200;
+        padding-left: 5vw;
+      }
+
+      #LoadingScreen {
+        margin-top: 50vh;
+      }
+
+      #LoadingScreen p {
+        margin-top: 5vh;
+      }
+
+      * {
+        --primary: #fff;
+      }
+
+      .dots:before {
+        display: block;
+        height: 5px;
+        width: 5px;
+        content: "";
+        -webkit-animation: spin 1s infinite;
+        animation: spin 1s infinite;
+        border-radius: 100%;
+        -webkit-box-shadow: 20px 0 0 5px var(--primary),
+          -20px 0 0 5px var(--primary);
+        box-shadow: 20px 0 0 5px var(--primary), -20px 0 0 5px var(--primary);
+      }
+
+      @-webkit-keyframes spin {
+        to {
+          -webkit-transform: rotate(360deg);
+          transform: rotate(360deg);
+        }
+      }
+
+      @keyframes spin {
+        to {
+          -webkit-transform: rotate(360deg);
+          transform: rotate(360deg);
+        }
+      }
+
+      /* Media Queries */
+      @media only screen and (max-width: 800px) {
+        body {
+          width: 80%;
+          padding-left: 10%;
+        }
+      }
+      @media only screen and (max-width: 600px) {
+        header h1 {
+          font-size: 3.5rem;
+        }
+        body {
+          width: 96%;
+          padding-left: 2%;
+        }
+      }
+    </style>
   </head>
-  <body onresize="ResizeContent()">
+  <body>
     <center>
       <div id="LoadingScreen">
         <div class="dots"></div>
@@ -54,9 +242,9 @@
         <!--Project Thumbnails-->
         <div id="projects">
           <div>
-            <p style="float: right">Loading Date</p>
+            <p style="float: right" id="date">Loading Date</p>
             <h3>Loading</h3>
-            <p>Loading Information</p>
+            <p id="content-text">Loading Information</p>
           </div>
         </div>
         <div id="footer">
@@ -93,6 +281,49 @@
       setTimeout(function () {
         HideLoadingScreen();
       }, 500);
+      //Load Content
+      var http = new XMLHttpRequest();
+      var currentUrl = window.location.href;
+      //extract path from the url
+      var path = currentUrl.substring(currentUrl.lastIndexOf("/") + 1);
+      http.open("GET", `/api/projects/${path}`, true);
+      console.log(`/api/projects/${path}`);
+      http.send();
+      http.onreadystatechange = function () {
+        if (this.readyState == 4 && this.status == 200) {
+          var data = JSON.parse(this.responseText);
+          document.getElementsByTagName("h1")[0].innerHTML = data[0].Title;
+          document.getElementsByTagName("h3")[0].innerHTML = data[0].Appetizer;
+          document.getElementById("content-text").innerHTML = data[0].Content;
+          //Change the month to words
+          var Time = data[0].Time;
+          var month = Time.substring(5, 7);
+          parseInt(month);
+          var monthNames = [
+            "January",
+            "February",
+            "March",
+            "April",
+            "May",
+            "June",
+            "July",
+            "August",
+            "September",
+            "October",
+            "November",
+            "December",
+          ];
+          var monthName = monthNames[month - 1];
+          var Time =
+            monthName +
+            " " +
+            Time.substring(8, 10) +
+            ", " +
+            Time.substring(0, 4);
+          document.getElementById("date").innerHTML = Time;
+          console.log(data[0].Content);
+        }
+      };
     </script>
   </body>
 </html>

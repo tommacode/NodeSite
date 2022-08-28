@@ -1,0 +1,34 @@
+Logs(
+    ID INT AUTO_INCREMENT PRIMARY KEY,
+    Time TIMESTAMP,
+    IP VARCHAR(64),
+    ForwardedFor VARCHAR(64),
+    UserAgent VARCHAR(255),
+    Method VARCHAR(8),
+    Path VARCHAR(255),
+    StatusCode INT
+);
+
+Users(
+    ID INT AUTO_INCREMENT PRIMARY KEY,
+    DisplayName VARCHAR(16),
+    Bio VARCHAR(255),
+    Username VARCHAR(255),
+    Password VARCHAR(255),
+    LastLogin TIMESTAMP,
+    LastIP VARCHAR(64),
+    LastForwardedFor VARCHAR(64),
+    LastUserAgent VARCHAR(255)
+);
+
+Projects(
+    ID INT AUTO_INCREMENT PRIMARY KEY,
+    Time TIMESTAMP,
+    Title VARCHAR(128),
+    Appetizer VARCHAR(255),
+    Content TEXT,
+    Tags VARCHAR(255),
+    Comments TEXT,
+    Likes INT,
+    Status VARCHAR(8)
+);

@@ -51,13 +51,7 @@
         Reset All
       </button>
       <!--Project Thumbnails-->
-      <div id="projects">
-        <div>
-          <p style="float: right">Date</p>
-          <h3>Placeholder Title</h3>
-          <p>Loreum ipsum</p>
-        </div>
-      </div>
+      <div id="projects"></div>
       <div id="footer">
         <h3>Footer</h3>
         <!--Links-->
@@ -89,7 +83,50 @@
         }
         setTimeout(function () {
           HideLoadingScreen();
-        }, 2000);
+        }, 0);
+        //Send http request to get the projects
+        var http = new XMLHttpRequest();
+        http.open("GET", "/api/projects", true);
+        http.send();
+        http.onreadystatechange = function () {
+          if (this.readyState == 4 && this.status == 200) {
+            var projects = JSON.parse(this.responseText);
+            for (var i = 0; i < projects.length; i++) {
+              var project = projects[i];
+              var projectDiv = document.createElement("div");
+              projectDiv.id = "project";
+              var Time = project.Time;
+              //Change the month to words
+              var month = Time.substring(5, 7);
+              parseInt(month);
+              var monthNames = [
+                "January",
+                "February",
+                "March",
+                "April",
+                "May",
+                "June",
+                "July",
+                "August",
+                "September",
+                "October",
+                "November",
+                "December",
+              ];
+              var monthName = monthNames[month - 1];
+              var Time =
+                monthName +
+                " " +
+                Time.substring(8, 10) +
+                ", " +
+                Time.substring(0, 4);
+
+              var link = project.Title.replaceAll(" ", "-");
+              projectDiv.innerHTML = `<a href="/projects/${link}"><p style='float: right'>${Time}</p><h3>${project.Title}</h3><p>${project.Appetizer}</p></a>`;
+              document.getElementById("projects").appendChild(projectDiv);
+            }
+          }
+        };
       </script>
     </div>
   </body>

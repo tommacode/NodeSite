@@ -1,53 +1,43 @@
-*{
+* {
   margin: 0;
   font-family: "Poppins", sans-serif;
   z-index: 0;
 }
 
 #content {
-    display: none;
+  display: none;
 }
 
 html {
   --border-thickness: 5px;
   --vert-margins: 2.5vh;
   background-color: hsla(0, 0%, 0%, 1);
-  background-image: radial-gradient(
-      at 40% 20%,
+  background-image: radial-gradient(at 40% 20%,
       hsla(22, 85%, 4%, 1) 0px,
-      transparent 50%
-    ),
-    radial-gradient(
-      at 98% 5%,
+      transparent 50%),
+    radial-gradient(at 98% 5%,
       hsla(201, 100%, 15%, 1) 0px,
-      transparent 50%
-    ),
-    radial-gradient(
-      at 0% 50%,
+      transparent 50%),
+    radial-gradient(at 0% 50%,
       hsla(228, 100%, 24%, 1) 0px,
-      transparent 50%
-    ),
-    radial-gradient(
-      at 80% 50%,
+      transparent 50%),
+    radial-gradient(at 80% 50%,
       hsla(338, 89%, 7%, 1) 0px,
-      transparent 50%
-    ),
-    radial-gradient(
-      at 0% 100%,
+      transparent 50%),
+    radial-gradient(at 0% 100%,
       hsla(215, 100%, 28%, 1) 0px,
-      transparent 50%
-    ),
-    radial-gradient(
-      at 80% 100%,
+      transparent 50%),
+    radial-gradient(at 80% 100%,
       hsla(240, 100%, 8%, 1) 0px,
-      transparent 50%
-    );
+      transparent 50%);
 }
+
 .linkBar {
   list-style-type: none;
   margin-top: 2vh;
   position: sticky;
 }
+
 .linkBar li {
   display: inline-block;
   padding-right: 2vw;
@@ -55,10 +45,12 @@ html {
   padding-top: 0;
   font-weight: 400;
 }
+
 .listLink {
   text-decoration: none;
   color: white;
 }
+
 body {
   min-height: 100vh;
   color: white;
@@ -67,20 +59,23 @@ body {
   font-size: 20px;
   font-weight: 200;
 }
+
 header h1 {
   font-size: 3em;
   font-weight: 600;
   line-height: 1em;
 }
+
 header h3 {
   font-weight: 200;
   line-height: 25px;
   font-size: 1.25em;
 }
+
 #bio,
 #skills,
-#projects,
 #footer,
+#project,
 #create {
   margin-top: 5vh;
   border-bottom: var(--border-thickness) solid white;
@@ -90,22 +85,27 @@ header h3 {
   padding-bottom: var(--vert-margins);
   line-height: 1.125em;
 }
+
 h3 {
   padding-bottom: 1vh;
 }
+
 #footer {
   text-align: center;
 }
+
 li p {
   padding-left: 5vw;
   font-weight: 200;
   padding-bottom: 1.5vh;
   font-size: 1em;
 }
+
 li {
   font-weight: 400;
   padding-top: 1vh;
 }
+
 button.clearBtn {
   background: none;
   border: none;
@@ -113,15 +113,18 @@ button.clearBtn {
   float: right;
   font-size: 0.875rem;
 }
+
 .hidden {
   display: none;
 }
+
 nav ul {
   list-style-type: none;
   display: flex;
   text-align: right;
   float: right;
 }
+
 nav ul li a {
   padding: 0;
   margin: 0;
@@ -132,37 +135,48 @@ nav ul li a {
 }
 
 #LoadingScreen {
-    margin-top: 50vh;
+  margin-top: 50vh;
 }
 
-#LoadingScreen p{
-    margin-top: 5vh;
+#LoadingScreen p {
+  margin-top: 5vh;
+}
+
+#project a {
+  text-decoration: none;
+  color: white;
+  text-decoration: underline;
 }
 
 * {
-    --primary: #fff;
+  --primary: #fff;
 }
 
 .dots:before {
-    display: block;
-    height: 5px;
-    width: 5px;
-    content: '';
-    -webkit-animation: spin 1s infinite;
-            animation: spin 1s infinite;
-    border-radius: 100%;
-    -webkit-box-shadow: 20px 0 0 5px var(--primary), -20px 0 0 5px var(--primary);
-            box-shadow: 20px 0 0 5px var(--primary), -20px 0 0 5px var(--primary); }
-  
-  @-webkit-keyframes spin {
-    to {
-      -webkit-transform: rotate(360deg);
-              transform: rotate(360deg); } }
-  
-  @keyframes spin {
-    to {
-      -webkit-transform: rotate(360deg);
-              transform: rotate(360deg); } }
+  display: block;
+  height: 5px;
+  width: 5px;
+  content: '';
+  -webkit-animation: spin 1s infinite;
+  animation: spin 1s infinite;
+  border-radius: 100%;
+  -webkit-box-shadow: 20px 0 0 5px var(--primary), -20px 0 0 5px var(--primary);
+  box-shadow: 20px 0 0 5px var(--primary), -20px 0 0 5px var(--primary);
+}
+
+@-webkit-keyframes spin {
+  to {
+    -webkit-transform: rotate(360deg);
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes spin {
+  to {
+    -webkit-transform: rotate(360deg);
+    transform: rotate(360deg);
+  }
+}
 
 /* Media Queries */
 @media only screen and (max-width: 800px) {
@@ -171,10 +185,12 @@ nav ul li a {
     padding-left: 10%;
   }
 }
+
 @media only screen and (max-width: 600px) {
   header h1 {
     font-size: 3.5rem;
   }
+
   body {
     width: 96%;
     padding-left: 2%;
