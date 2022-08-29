@@ -81,9 +81,6 @@
           document.getElementById("content").style.display = "block";
           document.getElementById("LoadingScreen").style.display = "none";
         }
-        setTimeout(function () {
-          HideLoadingScreen();
-        }, 0);
         //Send http request to get the projects
         var http = new XMLHttpRequest();
         http.open("GET", "/api/projects", true);
@@ -91,10 +88,14 @@
         http.onreadystatechange = function () {
           if (this.readyState == 4 && this.status == 200) {
             var projects = JSON.parse(this.responseText);
-            for (var i = 0; i < projects.length; i++) {
+            //reverse for loop
+            for (var i = projects.length - 1; i >= 0; i--) {
+              console.log(i);
               var project = projects[i];
               var projectDiv = document.createElement("div");
               projectDiv.id = "project";
+              //Make projectdiv inherit color
+              projectDiv.style.color = "inherit";
               var Time = project.Time;
               //Change the month to words
               var month = Time.substring(5, 7);
@@ -122,8 +123,9 @@
                 Time.substring(0, 4);
 
               var link = project.Title.replaceAll(" ", "-");
-              projectDiv.innerHTML = `<a href="/projects/${link}"><p style='float: right'>${Time}</p><h3>${project.Title}</h3><p>${project.Appetizer}</p></a>`;
+              projectDiv.innerHTML = `<a href="/projects/${link}"><p style='float: right;'>${Time}</p><h3>${project.Title}</h3><p>${project.Appetizer}</p></a>`;
               document.getElementById("projects").appendChild(projectDiv);
+              HideLoadingScreen();
             }
           }
         };

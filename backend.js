@@ -5,6 +5,10 @@ const fs = require("fs");
 const path = require("path");
 app.use(express.static(path.join(__dirname, "Pages")));
 const mysql = require("mysql");
+//body parser
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
 const readconnection = mysql.createConnection({
   host: process.env.DATABASEIP,
   user: process.env.DATABASEREADUSER,
@@ -69,13 +73,19 @@ app.get("/projects/*", (req, res) => {
   Logs(req, 200);
 });
 
-//JSON or text responses
+app.get("/createArticle", (req, res) => {
+  res.sendFile(path.join(__dirname, "Pages", "createArticle.html"));
+  Logs(req, 200);
+});
+
+//API responses
 app.get("/api/projects", (req, res) => {
   sql = `SELECT Time,Title,Appetizer FROM Projects`;
   readconnection.query(sql, function (err, result) {
     if (err) throw err;
     res.send(result);
   });
+  Logs(req, 200);
 });
 
 app.get("/api/projects/:project", (req, res) => {
@@ -88,13 +98,99 @@ app.get("/api/projects/:project", (req, res) => {
   });
 });
 
+//Likes
+app.get("/api/projects/:project/like", (req, res) => {
+  var project = req.params.project;
+  project = project.replaceAll("-", " ");
+  sql = `UPDATE Projects SET Likes = Likes + 1 WHERE Title = "${project}"`;
+  writeconnection.query(sql, function (err, result) {
+    if (err) throw err;
+  });
+  res.sendStatus(204);
+  Logs(req, 204);
+});
+
+app.get("/api/projects/:project/dislike", (req, res) => {
+  var project = req.params.project;
+  project = project.replaceAll("-", " ");
+  sql = `UPDATE Projects SET Likes = Likes - 1 WHERE Title = "${project}"`;
+  writeconnection.query(sql, function (err, result) {
+    if (err) throw err;
+  });
+  res.sendStatus(204);
+  Logs(req, 204);
+});
+
+//Comments
+app.get("/api/projects/:project/comments", (req, res) => {});
+
+//Post Data
+app.post("/api/projects/new", (req, res) => {
+  const password = req.body.password;
+  const title = req.body.title;
+  const appetizer = req.body.appetizer;
+  const Content = req.body.content;
+  const tags = req.body.tags;
+  var Status = req.body.visibility;
+  if ((Status = "Public")) {
+    Status = 1;
+  } else {
+    Status = 0;
+  }
+  if (password == process.env.PASSWORD) {
+    //Get current time as datetime
+    const date = new Date();
+    const datetime = date.toISOString().slice(0, 19).replace("T", " ");
+    sql = `INSERT INTO Projects (Time, Title, Appetizer, Content, Tags, Status, Likes) VALUES ("${datetime}", "${title}", "${appetizer}", "${Content}", "${tags}", "${Status}", 0)`;
+    writeconnection.query(sql, function (err, result) {
+      if (err) throw err;
+      res.send(`Successfully added project the visibility is set to ${Status}`);
+      Logs(req, 200);
+    });
+  } else {
+    res.send("Incorrect Password");
+    Logs(req, 403);
+  }
+});
+
+//Deployment
+app.get("/deployment/:Token", (req, res) => {
+  var token = req.params.Token;
+  if (token == process.env.DeploymentToken) {
+    res.send("Deployment Successful");
+    Logs(req, 200);
+  } else {
+    res.send("Deployment Failed");
+    Logs(req, 403);
+  }
+  //run bash script
+  const { exec } = require("child_process");
+  exec("bash /home/ubuntu/Deploy.sh", (err, stdout, stderr) => {
+    if (err) {
+      //some err occurred
+      console.error(err);
+    } else {
+      // the *entire* stdout and stderr (buffered)
+      console.log(`stdout: ${stdout}`);
+      console.log(`stderr: ${stderr}`);
+    }
+  });
+});
+
+app.get("/deployment", (req, res) => {
+  res.send("Please provide a token");
+  Logs(req, 400);
+});
+
 app.listen(process.env.PORT, () => {
   console.log(`Server is running on http://localhost:${process.env.PORT}`);
 });
 
 //What the backend will need to acomplish
-//Write logs to the database
+//Write logs to the database (done)
 //Handle authentication and tokens
 //Handle Passwords (Must get this right)
 //Write new projects to the database
 //Read the projects to the frontend
+//Get the backend to send emails to users when they comment
+//Respect weather a project is viewable or not

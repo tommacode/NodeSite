@@ -32,3 +32,13 @@ Projects(
     Likes INT,
     Status VARCHAR(8)
 );
+
+Comments(
+    ID INT AUTO_INCREMENT PRIMARY KEY,
+    Time TIMESTAMP,
+    ProjectID INT,
+    Name VARCHAR(16),
+    Email VARCHAR(255),
+    Content TEXT,
+    Likes INT
+);

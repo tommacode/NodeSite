@@ -2,6 +2,8 @@
   margin: 0;
   font-family: "Poppins", sans-serif;
   z-index: 0;
+  max-width: 100%;
+  --text-color: #fff;
 }
 
 #content {
@@ -11,25 +13,14 @@
 html {
   --border-thickness: 5px;
   --vert-margins: 2.5vh;
-  background-color: hsla(0, 0%, 0%, 1);
-  background-image: radial-gradient(at 40% 20%,
-      hsla(22, 85%, 4%, 1) 0px,
-      transparent 50%),
-    radial-gradient(at 98% 5%,
-      hsla(201, 100%, 15%, 1) 0px,
-      transparent 50%),
-    radial-gradient(at 0% 50%,
-      hsla(228, 100%, 24%, 1) 0px,
-      transparent 50%),
-    radial-gradient(at 80% 50%,
-      hsla(338, 89%, 7%, 1) 0px,
-      transparent 50%),
-    radial-gradient(at 0% 100%,
-      hsla(215, 100%, 28%, 1) 0px,
-      transparent 50%),
-    radial-gradient(at 80% 100%,
-      hsla(240, 100%, 8%, 1) 0px,
-      transparent 50%);
+  background-color: hsla(136, 10%, 7%, 1);
+  background-image:
+    radial-gradient(at 59% 37%, hsla(335, 100%, 16%, 1) 0px, transparent 50%),
+    radial-gradient(at 70% 56%, hsla(222, 100%, 8%, 1) 0px, transparent 50%),
+    radial-gradient(at 66% 95%, hsla(16, 0%, 0%, 1) 0px, transparent 50%),
+    radial-gradient(at 16% 65%, hsla(358, 100%, 28%, 1) 0px, transparent 50%),
+    radial-gradient(at 21% 13%, hsla(193, 100%, 15%, 1) 0px, transparent 50%),
+    radial-gradient(at 93% 28%, hsla(21, 71%, 63%, 1) 0px, transparent 50%);
 }
 
 .linkBar {
@@ -48,12 +39,12 @@ html {
 
 .listLink {
   text-decoration: none;
-  color: white;
+  color: var(--text-color);
 }
 
 body {
   min-height: 100vh;
-  color: white;
+  color: var(--text-color);
   width: 50%;
   margin-left: 25%;
   font-size: 20px;
@@ -109,7 +100,7 @@ li {
 button.clearBtn {
   background: none;
   border: none;
-  color: white;
+  color: var(--text-color);
   float: right;
   font-size: 0.875rem;
 }
@@ -128,7 +119,7 @@ nav ul {
 nav ul li a {
   padding: 0;
   margin: 0;
-  color: white;
+  color: var(--text-color);
   text-decoration: none;
   font-weight: 200;
   padding-left: 5vw;
@@ -144,15 +135,12 @@ nav ul li a {
 
 #project a {
   text-decoration: none;
-  color: white;
+  color: var(--text-color);
   text-decoration: underline;
 }
 
-* {
-  --primary: #fff;
-}
-
 .dots:before {
+  --primary: #fff;
   display: block;
   height: 5px;
   width: 5px;

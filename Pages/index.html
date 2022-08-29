@@ -48,7 +48,12 @@
       <!--Bio-->
       <div id="bio">
         <h3>Bio</h3>
-        <p id="bio-text">Loading...</p>
+        <p id="bio-text">
+          Hello, I am Tom, I am a programmer that is from Wales, UK. Mainly I
+          make websites and little things in python when I have time. The
+          languages that I can use include but are not limited to Python,
+          Javascript, HTML, CSS and Visual Basic.
+        </p>
         <br />
       </div>
       <!--Skills-->
@@ -60,18 +65,21 @@
             <button id="1" class="clearBtn" onclick="onClick()">Expand</button>
             <div id="1hide" class="hidden">
               <p>
-                If you had the ability to make a computer do something that you
-                would normally do manually why wouldn't you take that oportunity
+                I am a GSCE student studying computer science. I have a passion
+                for programming and finding out how things work. I have an
+                interest in many areas of computer science and hope to land a
+                job in that industry in the future.
               </p>
             </div>
           </li>
           <li>
-            Cloud Computing ☁️
+            Databases 📚
             <button id="2" class="clearBtn" onclick="onClick()">Expand</button>
             <div id="2hide" class="hidden">
               <p>
-                The cloud, Magical. You can press some buttons and then. Boom.
-                Computer.
+                I have a passion for databases and have a good understanding of
+                SQL. This site is using SQL to store projects that you can read
+                on the other pages.
               </p>
             </div>
           </li>
@@ -94,7 +102,7 @@
                 Currently I own and am the sole contributor to 2 websites. While
                 I wouldn't class myself as a master I still enough to write 2
                 websites and deploy the in the cloud without geting hacked to
-                pieces
+                pieces. I like working on the backend and frontend of websites.
               </p>
             </div>
           </li>
@@ -123,19 +131,17 @@
           <li><a href="#" class="listLink">Back to the top!</a></li>
         </ul>
       </div>
-      <script>
-        //Send Get request to load the bio
-        http = new XMLHttpRequest();
-        http.open("GET", "/text/bio", true);
-        http.send();
-        http.onreadystatechange = function () {
-          if (this.readyState == 4 && this.status == 200) {
-            document.getElementById("bio-text").innerHTML = this.responseText;
-          } else {
-            document.getElementById("bio-text").innerHTML = "Error loading bio";
-          }
-        };
-      </script>
     </div>
+    <script>
+      //Make the skills expandable
+      function onClick() {
+        elements = document.getElementById(this.id + "hide");
+        if (elements.className == "hidden") {
+          elements.className = "";
+        } else {
+          elements.className = "hidden";
+        }
+      }
+    </script>
   </body>
 </html>

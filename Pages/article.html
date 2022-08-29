@@ -40,35 +40,31 @@
       html {
         --border-thickness: 5px;
         --vert-margins: 2.5vh;
-        background-color: hsla(0, 0%, 0%, 1);
+        background-color: hsla(136, 10%, 7%, 1);
         background-image: radial-gradient(
-            at 40% 20%,
-            hsla(22, 85%, 4%, 1) 0px,
+            at 59% 37%,
+            hsla(335, 100%, 16%, 1) 0px,
             transparent 50%
           ),
           radial-gradient(
-            at 98% 5%,
-            hsla(201, 100%, 15%, 1) 0px,
+            at 70% 56%,
+            hsla(222, 100%, 8%, 1) 0px,
+            transparent 50%
+          ),
+          radial-gradient(at 66% 95%, hsla(16, 0%, 0%, 1) 0px, transparent 50%),
+          radial-gradient(
+            at 16% 65%,
+            hsla(358, 100%, 28%, 1) 0px,
             transparent 50%
           ),
           radial-gradient(
-            at 0% 50%,
-            hsla(228, 100%, 24%, 1) 0px,
+            at 21% 13%,
+            hsla(193, 100%, 15%, 1) 0px,
             transparent 50%
           ),
           radial-gradient(
-            at 80% 50%,
-            hsla(338, 89%, 7%, 1) 0px,
-            transparent 50%
-          ),
-          radial-gradient(
-            at 0% 100%,
-            hsla(215, 100%, 28%, 1) 0px,
-            transparent 50%
-          ),
-          radial-gradient(
-            at 80% 100%,
-            hsla(240, 100%, 8%, 1) 0px,
+            at 93% 28%,
+            hsla(21, 71%, 63%, 1) 0px,
             transparent 50%
           );
       }
@@ -110,7 +106,8 @@
       #skills,
       #projects,
       #footer,
-      #create {
+      #create,
+      .borders {
         margin-top: 5vh;
         border-bottom: var(--border-thickness) solid white;
         border-top: var(--border-thickness) solid white;
@@ -217,70 +214,82 @@
       }
     </style>
   </head>
-  <body>
+  <body onload="getLikes()">
     <center>
       <div id="LoadingScreen">
         <div class="dots"></div>
         <p>Loading epic content</p>
       </div>
     </center>
-    <center>
-      <div id="content">
-        <nav>
-          <ul>
-            <li><a href="/contact">Contact Me</a></li>
-            <li><a href="/projects">Home</a></li>
-          </ul>
-        </nav>
-        <!--Big header to draw attention-->
-        <header>
-          <h1>Loading</h1>
-        </header>
-        <button id="reset1" class="clearBtn" onclick="ResetAll()">
-          Reset All
-        </button>
-        <!--Project Thumbnails-->
-        <div id="projects">
-          <div>
-            <p style="float: right" id="date">Loading Date</p>
-            <h3>Loading</h3>
-            <p id="content-text">Loading Information</p>
-          </div>
-        </div>
-        <div id="footer">
-          <h3>Footer</h3>
-          <!--Links-->
-          <ul class="linkBar">
-            <li>
-              <a
-                target="_blank"
-                href="https://github.com/tommacode"
-                class="listLink"
-                >My Github</a
-              >
-            </li>
-            <li>
-              <a
-                target="_blank"
-                href="https://tomhasawebsite.com"
-                class="listLink"
-                >Other Website</a
-              >
-            </li>
-            <li><a href="#" class="listLink">Back to the top!</a></li>
-          </ul>
+    <div id="content">
+      <nav>
+        <ul>
+          <li><a href="/contact">Contact Me</a></li>
+          <li><a href="/projects">Home</a></li>
+        </ul>
+      </nav>
+      <!--Big header to draw attention-->
+      <header>
+        <h1>Loading</h1>
+      </header>
+      <!--Project Thumbnails-->
+      <button onclick="like()" id="likeBtn" class="likeBtn">Likes: 0</button>
+      <div id="projects">
+        <div>
+          <p style="float: right" id="date">Loading Date</p>
+          <h3>Loading</h3>
+          <!--Allow there to be html tags put in the content text-->
+          <p id="content-text">Loading Information</p>
         </div>
       </div>
-    </center>
+      <div class="borders">
+        <h3>Comments</h3>
+        <p>Write a comment:</p>
+        <p><sub>* fields are required</sub></p>
+        <form>
+          <input type="text" id="name" placeholder="Name*" />
+          <br />
+          <input type="text" id="email" placeholder="Email*" />
+          <br />
+          <textarea
+            style="width: 45vw"
+            id="comment"
+            placeholder="Comment*"
+          ></textarea>
+          <br />
+          <button type="button" onclick="addComment()">Add Comment</button>
+        </form>
+      </div>
+      <div id="footer">
+        <h3>Footer</h3>
+        <!--Links-->
+        <ul class="linkBar">
+          <li>
+            <a
+              target="_blank"
+              href="https://github.com/tommacode"
+              class="listLink"
+              >My Github</a
+            >
+          </li>
+          <li>
+            <a
+              target="_blank"
+              href="https://tomhasawebsite.com"
+              class="listLink"
+              >Other Website</a
+            >
+          </li>
+          <li><a href="#" class="listLink">Back to the top!</a></li>
+        </ul>
+      </div>
+    </div>
     <script>
       //wait for a few seconds then hide the loading screen and show the content
       function HideLoadingScreen() {
         document.getElementById("content").style.display = "block";
         document.getElementById("LoadingScreen").style.display = "none";
       }
-      setTimeout(function () {
-        HideLoadingScreen();
-      }, 500);
       //Load Content
       var http = new XMLHttpRequest();
       var currentUrl = window.location.href;
@@ -295,6 +304,9 @@
           document.getElementsByTagName("h1")[0].innerHTML = data[0].Title;
           document.getElementsByTagName("h3")[0].innerHTML = data[0].Appetizer;
           document.getElementById("content-text").innerHTML = data[0].Content;
+          document.getElementById(
+            "likeBtn"
+          ).innerHTML = `Likes: ${data[0].Likes}`;
           //Change the month to words
           var Time = data[0].Time;
           var month = Time.substring(5, 7);
@@ -322,8 +334,39 @@
             Time.substring(0, 4);
           document.getElementById("date").innerHTML = Time;
           console.log(data[0].Content);
+          HideLoadingScreen();
         }
       };
+      likeValue = 0;
+      function like() {
+        if (likeValue == 0) {
+          var likes = document.getElementById("likeBtn").innerHTML;
+          var likes = likes.substring(7, likes.length);
+          var likes = parseInt(likes);
+          likes++;
+          document.getElementById("likeBtn").innerHTML = "Likes: " + likes;
+          likeValue = 1;
+          var http = new XMLHttpRequest();
+          var currentUrl = window.location.href;
+          var path = currentUrl.substring(currentUrl.lastIndexOf("/") + 1);
+          http.open("GET", `/api/projects/${path}/like`, true);
+          http.send();
+        } else {
+          var likes = document.getElementById("likeBtn").innerHTML;
+          var likes = likes.substring(7, likes.length);
+          var likes = parseInt(likes);
+          likes--;
+          document.getElementById("likeBtn").innerHTML = "Likes: " + likes;
+          likeValue = 0;
+          //Send the like to the server
+          var http = new XMLHttpRequest();
+          var currentUrl = window.location.href;
+          //extract path from the url
+          var path = currentUrl.substring(currentUrl.lastIndexOf("/") + 1);
+          http.open("GET", `/api/projects/${path}/dislike`, true);
+          http.send();
+        }
+      }
     </script>
   </body>
 </html>
