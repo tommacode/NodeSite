@@ -210,11 +210,12 @@
         body {
           width: 96%;
           padding-left: 2%;
+          margin: 0;
         }
       }
     </style>
   </head>
-  <body>
+  <body onload="LoadComments()">
     <center>
       <div id="LoadingScreen">
         <div class="dots"></div>
@@ -243,8 +244,7 @@
         </div>
       </div>
       <div class="borders">
-        <h3>Comments</h3>
-        <p>Write a comment:</p>
+        <h3>Write a comment:</h3>
         <p><sub>* fields are required</sub></p>
         <form>
           <input
@@ -273,6 +273,9 @@
           <br />
           <button type="button" onclick="addComment()">Add Comment</button>
         </form>
+      </div>
+      <div id="comments" class="borders">
+        <h3>Comments</h3>
       </div>
       <div id="footer">
         <h3>Footer</h3>
@@ -384,8 +387,10 @@
       function NameCounter() {
         var name = document.getElementById("name").value;
         var nameLength = name.length;
-        if (nameLength > 20) {
+        if (nameLength > 16) {
           document.getElementById("name").value = name.substring(0, 16);
+          var name = document.getElementById("name").value;
+          var nameLength = name.length;
         }
         document.getElementById("NameCounterOutput").innerHTML =
           nameLength + "/16";
@@ -417,6 +422,31 @@
         http.onreadystatechange = function () {
           if (this.readyState == 4 && this.status == 200) {
             console.log(this.responseText);
+          }
+        };
+      }
+      //Load comments
+      function LoadComments() {
+        var http = new XMLHttpRequest();
+        var currentUrl = window.location.href;
+        //extract path from the url
+        var path = currentUrl.substring(currentUrl.lastIndexOf("/") + 1);
+        http.open("GET", `/api/projects/${path}/comments`, true);
+        http.send();
+        http.onreadystatechange = function () {
+          if (this.readyState == 4 && this.status == 200) {
+            var data = JSON.parse(this.responseText);
+            for (var i = 0; i < data.length; i++) {
+              var comment = document.createElement("div");
+              comment.className = "comment";
+              var name = document.createElement("h4");
+              name.innerHTML = data[i].Name;
+              var commentText = document.createElement("p");
+              commentText.innerHTML = data[i].Content;
+              comment.appendChild(name);
+              comment.appendChild(commentText);
+              document.getElementById("comments").appendChild(comment);
+            }
           }
         };
       }

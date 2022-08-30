@@ -182,5 +182,6 @@ nav ul li a {
   body {
     width: 96%;
     padding-left: 2%;
+    margin: 0;
   }
 }

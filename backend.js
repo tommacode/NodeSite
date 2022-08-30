@@ -136,6 +136,7 @@ app.post("/api/projects/:project/comment", (req, res) => {
   const datetime = date.toISOString().slice(0, 19).replace("T", " ");
   if (req.body.email != undefined) {
     var email = req.body.email;
+
     //Send Email With sendgrid
     const msg = {
       to: email,
@@ -144,13 +145,31 @@ app.post("/api/projects/:project/comment", (req, res) => {
       text: `Hi ${name},\n\nThanks for leaving a comment on our website.The comment was:${comment} posted at:${datetime}`,
     };
     sgMail.send(msg);
+    sql = `INSERT INTO Comments (Time, Project, Name, Email, Content, Likes) VALUES ("${datetime}", "${project}", "${name}", "${email}", "${comment}", 0)`;
   } else {
-    sql = `INSERT INTO Comments (Time, Project, Name, Comment) VALUES ("${datetime}", "${project}", "${name}", "${comment}")`;
+    sql = `INSERT INTO Comments (Time, Project, Name, Content, Likes) VALUES ("${datetime}", "${project}", "${name}", "${comment}", 0)`;
   }
 
-  res.sendStatus(204);
+  writeconnection.query(sql, function (err, result) {
+    if (err) throw err;
+  }),
+
+    res.sendStatus(204);
   Logs(req, 204);
 });
+
+app.get("/api/projects/:project/comments", (req, res) => {
+  var project = req.params.project;
+  project = project.replaceAll("-", " ");
+  sql = `SELECT Name,Content,Likes FROM Comments WHERE Project = "${project}"`;
+  readconnection.query(sql, function (err, result) {
+    if (err) throw err;
+    res.send(result);
+    Logs(req, 200);
+  });
+});
+
+
 
 //Post Data
 app.post("/api/projects/new", (req, res) => {
