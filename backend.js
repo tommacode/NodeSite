@@ -8,6 +8,9 @@ const mysql = require("mysql");
 //body parser
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+//Send grid
+const sgMail = require("@sendgrid/mail");
+sgMail.setApiKey(process.env.SG_API_KEY);
 
 const readconnection = mysql.createConnection({
   host: process.env.DATABASEIP,
@@ -84,8 +87,8 @@ app.get("/api/projects", (req, res) => {
   readconnection.query(sql, function (err, result) {
     if (err) throw err;
     res.send(result);
+    Logs(req, 200);
   });
-  Logs(req, 200);
 });
 
 app.get("/api/projects/:project", (req, res) => {
@@ -95,6 +98,7 @@ app.get("/api/projects/:project", (req, res) => {
   readconnection.query(sql, function (err, result) {
     if (err) throw err;
     res.send(result);
+    Logs(req, 200);
   });
 });
 
@@ -122,7 +126,31 @@ app.get("/api/projects/:project/dislike", (req, res) => {
 });
 
 //Comments
-app.get("/api/projects/:project/comments", (req, res) => {});
+app.post("/api/projects/:project/comment", (req, res) => {
+  var project = req.params.project;
+  project = project.replaceAll("-", " ");
+  var comment = req.body.comment;
+  var name = req.body.name;
+  //Get Current time as datetime
+  const date = new Date();
+  const datetime = date.toISOString().slice(0, 19).replace("T", " ");
+  if (req.body.email != undefined) {
+    var email = req.body.email;
+    //Send Email With sendgrid
+    const msg = {
+      to: email,
+      from: process.env.SENDER_EMAIL,
+      subject: "Thanks for leaving a comment",
+      text: `Hi ${name},\n\nThanks for leaving a comment on our website.The comment was:${comment} posted at:${datetime}`,
+    };
+    sgMail.send(msg);
+  } else {
+    sql = `INSERT INTO Comments (Time, Project, Name, Comment) VALUES ("${datetime}", "${project}", "${name}", "${comment}")`;
+  }
+
+  res.sendStatus(204);
+  Logs(req, 204);
+});
 
 //Post Data
 app.post("/api/projects/new", (req, res) => {
@@ -132,12 +160,21 @@ app.post("/api/projects/new", (req, res) => {
   const Content = req.body.content;
   const tags = req.body.tags;
   var Status = req.body.visibility;
-  if ((Status = "Public")) {
-    Status = 1;
-  } else {
-    Status = 0;
-  }
+
   if (password == process.env.PASSWORD) {
+    //Send Email With sendgrid
+    const msg = {
+      to: process.env.EMAIL,
+      from: process.env.SENDER_EMAIL,
+      subject: "New Project Created",
+      text: `Hello,\n\nSomeone has successfully created a new article on the website (tomblake.me) the details are: Title: ${title} Appetizer: ${appetizer} Content: ${Content} Tags: ${tags} Status: ${Status}`,
+    };
+    sgMail.send(msg);
+    if ((Status = "Public")) {
+      Status = 1;
+    } else {
+      Status = 0;
+    }
     //Get current time as datetime
     const date = new Date();
     const datetime = date.toISOString().slice(0, 19).replace("T", " ");

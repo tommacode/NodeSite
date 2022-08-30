@@ -36,7 +36,7 @@ Projects(
 Comments(
     ID INT AUTO_INCREMENT PRIMARY KEY,
     Time TIMESTAMP,
-    ProjectID INT,
+    Project VARCHAR(128),
     Name VARCHAR(16),
     Email VARCHAR(255),
     Content TEXT,

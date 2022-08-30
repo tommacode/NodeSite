@@ -214,7 +214,7 @@
       }
     </style>
   </head>
-  <body onload="getLikes()">
+  <body>
     <center>
       <div id="LoadingScreen">
         <div class="dots"></div>
@@ -247,9 +247,23 @@
         <p>Write a comment:</p>
         <p><sub>* fields are required</sub></p>
         <form>
-          <input type="text" id="name" placeholder="Name*" />
+          <input
+            oninput="NameCounter()"
+            type="text"
+            id="name"
+            placeholder="Name*"
+          />
           <br />
-          <input type="text" id="email" placeholder="Email*" />
+          <sub id="NameCounterOutput" style="float: right">0/16</sub>
+          <br />
+          <input
+            oninput="EmailCounter()"
+            type="text"
+            id="email"
+            placeholder="Email"
+          />
+          <br />
+          <sub id="EmailCounterOutput" style="float: right">0/255</sub>
           <br />
           <textarea
             style="width: 45vw"
@@ -296,7 +310,6 @@
       //extract path from the url
       var path = currentUrl.substring(currentUrl.lastIndexOf("/") + 1);
       http.open("GET", `/api/projects/${path}`, true);
-      console.log(`/api/projects/${path}`);
       http.send();
       http.onreadystatechange = function () {
         if (this.readyState == 4 && this.status == 200) {
@@ -333,7 +346,6 @@
             ", " +
             Time.substring(0, 4);
           document.getElementById("date").innerHTML = Time;
-          console.log(data[0].Content);
           HideLoadingScreen();
         }
       };
@@ -366,6 +378,47 @@
           http.open("GET", `/api/projects/${path}/dislike`, true);
           http.send();
         }
+      }
+
+      //Counters for the ammount of characters in the fields
+      function NameCounter() {
+        var name = document.getElementById("name").value;
+        var nameLength = name.length;
+        if (nameLength > 20) {
+          document.getElementById("name").value = name.substring(0, 16);
+        }
+        document.getElementById("NameCounterOutput").innerHTML =
+          nameLength + "/16";
+      }
+      function EmailCounter() {
+        var email = document.getElementById("email").value;
+        var emailLength = email.length;
+        if (emailLength > 255) {
+          document.getElementById("email").value = email.substring(0, 255);
+        }
+        document.getElementById("EmailCounterOutput").innerHTML =
+          emailLength + "/255";
+      }
+      //Post comment to the server
+      function addComment() {
+        var name = document.getElementById("name").value;
+        var email = document.getElementById("email").value;
+        var comment = document.getElementById("comment").value;
+        var http = new XMLHttpRequest();
+        var currentUrl = window.location.href;
+        //extract path from the url
+        var path = currentUrl.substring(currentUrl.lastIndexOf("/") + 1);
+        http.open("POST", `/api/projects/${path}/comment`, true);
+        http.setRequestHeader(
+          "Content-type",
+          "application/x-www-form-urlencoded"
+        );
+        http.send(`name=${name}&email=${email}&comment=${comment}`);
+        http.onreadystatechange = function () {
+          if (this.readyState == 4 && this.status == 200) {
+            console.log(this.responseText);
+          }
+        };
       }
     </script>
   </body>
