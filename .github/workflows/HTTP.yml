@@ -1,0 +1,18 @@
+# This workflow will do a clean installation of node dependencies, cache/restore them, build the source code and run tests across different versions of node
+# For more information see: https://help.github.com/actions/language-and-framework-guides/using-nodejs-with-github-actions
+
+name: HTTP to server
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  deployment:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Deploy Stage
+      uses: fjogeleit/http-request-action@v1
+      with:
+        url: 'http://tomblake.me/deployment/bf1409cd2e8c9acd001e2079774b446b77f568ba76772c95163db09a2e9a7b73'
+        method: 'GET'
