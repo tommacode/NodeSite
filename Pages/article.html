@@ -165,6 +165,13 @@
         margin-top: 5vh;
       }
 
+      hr {
+        margin-top: 2.5vh;
+        height: 0.5vh;
+        border: none;
+        background-color: #fff;
+      }
+
       * {
         --primary: #fff;
       }
@@ -443,8 +450,10 @@
               name.innerHTML = data[i].Name;
               var commentText = document.createElement("p");
               commentText.innerHTML = data[i].Content;
+              Divider = document.createElement("hr");
               comment.appendChild(name);
               comment.appendChild(commentText);
+              comment.appendChild(Divider);
               document.getElementById("comments").appendChild(comment);
             }
           }

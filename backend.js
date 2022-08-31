@@ -134,28 +134,35 @@ app.post("/api/projects/:project/comment", (req, res) => {
   //Get Current time as datetime
   const date = new Date();
   const datetime = date.toISOString().slice(0, 19).replace("T", " ");
-  if (req.body.email != undefined) {
-    var email = req.body.email;
+  //Make sure that the comment is not empty and doesn't contain any html
+  if (comment != "" && !comment.includes("<script>")) {
+    if (req.body.email != "") {
+      var email = req.body.email;
+      //Send Email With sendgrid
+      const msg = {
+        to: email,
+        from: process.env.SENDER_EMAIL,
+        subject: "Thanks for leaving a comment",
+        text: `Hi ${name},\n\nThanks for leaving a comment on our website.The comment was:${comment} posted at:${datetime}`,
+      };
+      sgMail.send(msg);
+      sql = `INSERT INTO Comments (Time, Project, Name, Email, Content, Likes) VALUES ("${datetime}", "${project}", "${name}", "${email}", "${comment}", 0)`;
+    } else {
+      sql = `INSERT INTO Comments (Time, Project, Name, Content, Likes) VALUES ("${datetime}", "${project}", "${name}", "${comment}", 0)`;
+    }
 
-    //Send Email With sendgrid
-    const msg = {
-      to: email,
-      from: process.env.SENDER_EMAIL,
-      subject: "Thanks for leaving a comment",
-      text: `Hi ${name},\n\nThanks for leaving a comment on our website.The comment was:${comment} posted at:${datetime}`,
-    };
-    sgMail.send(msg);
-    sql = `INSERT INTO Comments (Time, Project, Name, Email, Content, Likes) VALUES ("${datetime}", "${project}", "${name}", "${email}", "${comment}", 0)`;
+    writeconnection.query(sql, function (err, result) {
+      if (err) throw err;
+    }),
+      res.sendStatus(204);
+    Logs(req, 204);
   } else {
-    sql = `INSERT INTO Comments (Time, Project, Name, Content, Likes) VALUES ("${datetime}", "${project}", "${name}", "${comment}", 0)`;
+    res.send(
+      "Request either has blank required fields or contains HTML tags",
+      400
+    );
+    Logs(req, 400);
   }
-
-  writeconnection.query(sql, function (err, result) {
-    if (err) throw err;
-  }),
-
-    res.sendStatus(204);
-  Logs(req, 204);
 });
 
 app.get("/api/projects/:project/comments", (req, res) => {
@@ -168,8 +175,6 @@ app.get("/api/projects/:project/comments", (req, res) => {
     Logs(req, 200);
   });
 });
-
-
 
 //Post Data
 app.post("/api/projects/new", (req, res) => {
