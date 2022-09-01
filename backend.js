@@ -115,6 +115,11 @@ app.get("/api/projects/:project", (req, res) => {
   });
 });
 
+app.get("/robots.txt", (req, res) => {
+  res.sendFile(path.join(__dirname, "Pages", "robots.txt"));
+  Logs(req, 200);
+});
+
 //Likes
 app.get("/api/projects/:project/like", (req, res) => {
   var project = req.params.project;
