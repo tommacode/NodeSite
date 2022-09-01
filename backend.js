@@ -193,11 +193,17 @@ app.get("/api/projects/:project/comments", (req, res) => {
 //Post Data
 app.post("/api/projects/new", (req, res) => {
   const password = req.body.password;
-  const title = req.body.title;
-  const appetizer = req.body.appetizer;
-  const Content = req.body.content;
-  const tags = req.body.tags;
+  var title = req.body.title;
+  var appetizer = req.body.appetizer;
+  var Content = req.body.content;
+  var tags = req.body.tags;
   var Status = req.body.visibility;
+
+  //Replace all " with ""
+  title = title.replaceAll('"', '""');
+  appetizer = appetizer.replaceAll('"', '""');
+  Content = Content.replaceAll('"', '""');
+  tags = tags.replaceAll('"', '""');
 
   if (password == process.env.PASSWORD) {
     //Send Email With sendgrid
