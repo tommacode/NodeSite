@@ -39,8 +39,8 @@
     <div id="content">
       <nav>
         <ul>
-          <li><a href="/contact">Contact Me</a></li>
-          <li><a href="/projects">Home</a></li>
+          <li><a href="/">Home</a></li>
+          <li><a href="/projects">Articles</a></li>
         </ul>
       </nav>
       <!--Big header to draw attention-->
@@ -50,6 +50,14 @@
       <button id="reset1" class="clearBtn" onclick="ResetAll()">
         Reset All
       </button>
+      <!--Search-->
+      <div class="borders">
+        <h3>Search</h3>
+        <input type="text" id="searchBar" placeholder="Search..." />
+        <button id="searchBtn" class="clearBtn" onclick="Search()">
+          Search
+        </button>
+      </div>
       <!--Project Thumbnails-->
       <div id="projects"></div>
       <div id="footer">
@@ -129,6 +137,20 @@
             }
           }
         };
+        //Search
+        function Search() {
+          var search = document.getElementById("searchBar").value;
+          var projects = document.getElementById("projects").children;
+          for (var i = 0; i < projects.length; i++) {
+            var project = projects[i];
+            var title = project.children[0].children[1].innerHTML;
+            if (title.toLowerCase().includes(search.toLowerCase())) {
+              project.style.display = "block";
+            } else {
+              project.style.display = "none";
+            }
+          }
+        }
       </script>
     </div>
   </body>

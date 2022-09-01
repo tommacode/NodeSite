@@ -11,6 +11,19 @@ app.use(express.urlencoded({ extended: true }));
 //Send grid
 const sgMail = require("@sendgrid/mail");
 sgMail.setApiKey(process.env.SG_API_KEY);
+//Rate limit
+const rateLimit = require("express-rate-limit");
+//Proxied
+if (process.env.PROXIED == "true") {
+  app.set("trust proxy", 1);
+}
+
+//Rate limit
+const CommentLimit = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 mins window
+  max: 5, // start blocking after the 5th request
+  message: 429, //Send too many requests error
+});
 
 const readconnection = mysql.createConnection({
   host: process.env.DATABASEIP,
@@ -36,7 +49,7 @@ function Logs(req, StatusCode) {
   //Change date to datetime value
   const datetime = date.toISOString().slice(0, 19).replace("T", " ");
   //Get IP
-  const ip = req.connection.remoteAddress;
+  const ip = req.ip;
   //Get Forwarded for
   var forwardedfor = req.headers["x-forwarded-for"];
   if (forwardedfor == undefined) {
@@ -126,11 +139,14 @@ app.get("/api/projects/:project/dislike", (req, res) => {
 });
 
 //Comments
-app.post("/api/projects/:project/comment", (req, res) => {
+app.post("/api/projects/:project/comment", CommentLimit, (req, res) => {
   var project = req.params.project;
   project = project.replaceAll("-", " ");
   var comment = req.body.comment;
   var name = req.body.name;
+  //Make sure that any " are replaced with ""
+  comment = comment.replaceAll('"', '""');
+  name = name.replaceAll('"', '""');
   //Get Current time as datetime
   const date = new Date();
   const datetime = date.toISOString().slice(0, 19).replace("T", " ");
@@ -154,13 +170,11 @@ app.post("/api/projects/:project/comment", (req, res) => {
     writeconnection.query(sql, function (err, result) {
       if (err) throw err;
     }),
+      //Send response
       res.sendStatus(204);
     Logs(req, 204);
   } else {
-    res.send(
-      "Request either has blank required fields or contains HTML tags",
-      400
-    );
+    res.sendStatus(400);
     Logs(req, 400);
   }
 });

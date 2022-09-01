@@ -67,7 +67,8 @@ header h3 {
 #skills,
 #footer,
 #project,
-#create {
+#create,
+.borders {
   margin-top: 5vh;
   border-bottom: var(--border-thickness) solid white;
   border-top: var(--border-thickness) solid white;

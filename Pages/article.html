@@ -167,9 +167,10 @@
 
       hr {
         margin-top: 2.5vh;
-        height: 0.5vh;
+        height: 0.25vh;
         border: none;
         background-color: #fff;
+        border-radius: 25px;
       }
 
       * {
@@ -232,8 +233,8 @@
     <div id="content">
       <nav>
         <ul>
-          <li><a href="/contact">Contact Me</a></li>
-          <li><a href="/projects">Home</a></li>
+          <li><a href="/">Home</a></li>
+          <li><a href="/projects">Articles</a></li>
         </ul>
       </nav>
       <!--Big header to draw attention-->
@@ -280,6 +281,7 @@
           <br />
           <button type="button" onclick="addComment()">Add Comment</button>
         </form>
+        <p id="response"></p>
       </div>
       <div id="comments" class="borders">
         <h3>Comments</h3>
@@ -309,7 +311,7 @@
       </div>
     </div>
     <script>
-      //wait for a few seconds then hide the loading screen and show the content
+      //Wait until the content is loaded
       function HideLoadingScreen() {
         document.getElementById("content").style.display = "block";
         document.getElementById("LoadingScreen").style.display = "none";
@@ -416,6 +418,11 @@
         var name = document.getElementById("name").value;
         var email = document.getElementById("email").value;
         var comment = document.getElementById("comment").value;
+        //Clear all boxes
+        document.getElementById("name").value = "";
+        document.getElementById("email").value = "";
+        document.getElementById("comment").value = "";
+        //Send the comment to the server
         var http = new XMLHttpRequest();
         var currentUrl = window.location.href;
         //extract path from the url
@@ -427,9 +434,22 @@
         );
         http.send(`name=${name}&email=${email}&comment=${comment}`);
         http.onreadystatechange = function () {
-          if (this.readyState == 4 && this.status == 200) {
-            console.log(this.responseText);
+          if (this.readyState == 4 && this.status == 204) {
+            document.getElementById("response").innerHTML =
+              "<b>Comment Posted!</b>";
           }
+          if (this.readyState == 4 && this.status == 400) {
+            document.getElementById("response").innerHTML =
+              "<b>Error posting comment (May contain script tags)!</b>";
+          }
+          if (this.readyState == 4 && this.status == 429) {
+            document.getElementById("response").innerHTML =
+              "<b>You have posted too many comments in too little time</b>";
+          }
+          //Wait and then clear the response
+          setTimeout(function () {
+            document.getElementById("response").innerHTML = "";
+          }, 2000);
         };
       }
       //Load comments
