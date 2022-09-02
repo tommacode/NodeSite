@@ -272,6 +272,12 @@ app.listen(process.env.PORT, () => {
   console.log(`Server is running on http://localhost:${process.env.PORT}`);
 });
 
+//Keepalive sql requests
+setInterval(function () {
+  readconnection.query("SELECT 1");
+  writeconnection.query("SELECT 1");
+}, 1000 * 60);
+
 //What the backend will need to acomplish
 //Write logs to the database (done)
 //Handle authentication and tokens
