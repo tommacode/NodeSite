@@ -18,31 +18,40 @@ if (process.env.PROXIED == "true") {
   app.set("trust proxy", 1);
 }
 
+const cookies = require("cookie-parser");
+app.use(cookies());
+
 //Rate limit
 const CommentLimit = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 mins window
   max: 5, // start blocking after the 5th request
   message: 429, //Send too many requests error
 });
+function CreateRead() {
+  const readconnection = mysql.createConnection({
+    host: process.env.DATABASEIP,
+    user: process.env.DATABASEREADUSER,
+    password: process.env.DATABASEPASSWORD,
+    database: process.env.DATABASENAME,
+  });
+  readconnection.connect(function (err) {
+    if (err) throw err;
+  });
+  return readconnection;
+}
 
-const readconnection = mysql.createConnection({
-  host: process.env.DATABASEIP,
-  user: process.env.DATABASEREADUSER,
-  password: process.env.DATABASEPASSWORD,
-  database: process.env.DATABASENAME,
-});
-const writeconnection = mysql.createConnection({
-  host: process.env.DATABASEIP,
-  user: process.env.DATABASEWRITEUSER,
-  password: process.env.DATABASEPASSWORD,
-  database: process.env.DATABASENAME,
-});
-readconnection.connect(function (err) {
-  if (err) throw err;
-});
-writeconnection.connect(function (err) {
-  if (err) throw err;
-});
+function CreateWrite() {
+  const writeconnection = mysql.createConnection({
+    host: process.env.DATABASEIP,
+    user: process.env.DATABASEWRITEUSER,
+    password: process.env.DATABASEPASSWORD,
+    database: process.env.DATABASENAME,
+  });
+  writeconnection.connect(function (err) {
+    if (err) throw err;
+  });
+  return writeconnection;
+}
 
 function Logs(req, StatusCode) {
   const date = new Date();
@@ -64,10 +73,12 @@ function Logs(req, StatusCode) {
   console.log(
     `${datetime} | ${ip} | ${forwardedfor} | ${useragent} | ${method} | ${path} | ${StatusCode}`
   );
+  writeconnection = CreateWrite();
   sql = `INSERT INTO Logs (Time, ip, forwardedfor, useragent, method, path, statuscode) VALUES ("${datetime}", "${ip}", "${forwardedfor}", "${useragent}", "${method}", "${path}", "${StatusCode}")`;
   writeconnection.query(sql, function (err, result) {
     if (err) throw err;
   });
+  writeconnection.end();
 }
 
 //HTML responses
@@ -94,25 +105,43 @@ app.get("/createArticle", (req, res) => {
   Logs(req, 200);
 });
 
+app.get("/css.css", (req, res) => {
+  res.sendFile(__dirname + "/Pages/css.css");
+  Logs(req, 200);
+});
+
 //API responses
+//General
 app.get("/api/projects", (req, res) => {
-  sql = `SELECT Time,Title,Appetizer FROM Projects`;
-  readconnection.query(sql, function (err, result) {
-    if (err) throw err;
-    res.send(result);
-    Logs(req, 200);
-  });
+  try {
+    readconnection = CreateRead();
+    sql = `SELECT Time,Title,Appetizer FROM Projects`;
+    readconnection.query(sql, function (err, result) {
+      if (err) throw err;
+      res.send(result);
+      Logs(req, 200);
+    });
+    readconnection.end();
+  } catch (err) {
+    console.log("/api/projects");
+  }
 });
 
 app.get("/api/projects/:project", (req, res) => {
-  var project = req.params.project;
-  project = project.replaceAll("-", " ");
-  sql = `SELECT * FROM Projects WHERE Title = "${project}"`;
-  readconnection.query(sql, function (err, result) {
-    if (err) throw err;
-    res.send(result);
-    Logs(req, 200);
-  });
+  try {
+    var project = req.params.project;
+    project = project.replaceAll("-", " ");
+    readconnection = CreateRead();
+    sql = `SELECT * FROM Projects WHERE Title = "${project}"`;
+    readconnection.query(sql, function (err, result) {
+      if (err) throw err;
+      res.send(result);
+      Logs(req, 200);
+    });
+    readconnection.end();
+  } catch (err) {
+    console.log("/api/projects/:project");
+  }
 });
 
 app.get("/robots.txt", (req, res) => {
@@ -124,23 +153,27 @@ app.get("/robots.txt", (req, res) => {
 app.get("/api/projects/:project/like", (req, res) => {
   var project = req.params.project;
   project = project.replaceAll("-", " ");
+  writeconnection = CreateWrite();
   sql = `UPDATE Projects SET Likes = Likes + 1 WHERE Title = "${project}"`;
   writeconnection.query(sql, function (err, result) {
     if (err) throw err;
+    writeconnection.end();
+    res.sendStatus(204);
+    Logs(req, 204);
   });
-  res.sendStatus(204);
-  Logs(req, 204);
 });
 
 app.get("/api/projects/:project/dislike", (req, res) => {
   var project = req.params.project;
   project = project.replaceAll("-", " ");
+  writeconnection = CreateWrite();
   sql = `UPDATE Projects SET Likes = Likes - 1 WHERE Title = "${project}"`;
   writeconnection.query(sql, function (err, result) {
     if (err) throw err;
+    writeconnection.end();
+    res.sendStatus(204);
+    Logs(req, 204);
   });
-  res.sendStatus(204);
-  Logs(req, 204);
 });
 
 //Comments
@@ -171,12 +204,13 @@ app.post("/api/projects/:project/comment", CommentLimit, (req, res) => {
     } else {
       sql = `INSERT INTO Comments (Time, Project, Name, Content, Likes) VALUES ("${datetime}", "${project}", "${name}", "${comment}", 0)`;
     }
-
+    writeconnection = CreateWrite();
     writeconnection.query(sql, function (err, result) {
       if (err) throw err;
-    }),
-      //Send response
-      res.sendStatus(204);
+      writeconnection.end();
+    });
+    //Send response
+    res.sendStatus(204);
     Logs(req, 204);
   } else {
     res.sendStatus(400);
@@ -187,11 +221,13 @@ app.post("/api/projects/:project/comment", CommentLimit, (req, res) => {
 app.get("/api/projects/:project/comments", (req, res) => {
   var project = req.params.project;
   project = project.replaceAll("-", " ");
+  readconnection = CreateRead();
   sql = `SELECT Name,Content,Likes FROM Comments WHERE Project = "${project}"`;
   readconnection.query(sql, function (err, result) {
     if (err) throw err;
     res.send(result);
     Logs(req, 200);
+    readconnection.end();
   });
 });
 
@@ -227,11 +263,13 @@ app.post("/api/projects/new", (req, res) => {
     //Get current time as datetime
     const date = new Date();
     const datetime = date.toISOString().slice(0, 19).replace("T", " ");
+    writeconnection = CreateWrite();
     sql = `INSERT INTO Projects (Time, Title, Appetizer, Content, Tags, Status, Likes) VALUES ("${datetime}", "${title}", "${appetizer}", "${Content}", "${tags}", "${Status}", 0)`;
     writeconnection.query(sql, function (err, result) {
       if (err) throw err;
       res.send(`Successfully added project the visibility is set to ${Status}`);
       Logs(req, 200);
+      writeconnection.end();
     });
   } else {
     res.send("Incorrect Password");
@@ -268,15 +306,56 @@ app.get("/deployment", (req, res) => {
   Logs(req, 400);
 });
 
+//Management
+app.get("/management", (req, res) => {
+  Cookies = req.cookies;
+  if (Cookies["Auth"] == process.env.ManagementToken) {
+    res.sendFile(__dirname + "/AdminPages/Management.html");
+    Logs(req, 200);
+  } else {
+    res.redirect("/login");
+    Logs(req, 302);
+  }
+});
+
+app.get("/management/CreateArticle", (req, res) => {
+  Cookies = req.cookies;
+  if (Cookies["Auth"] == process.env.ManagementToken) {
+    res.sendFile(__dirname + "/AdminPages/CreateArticle.html");
+    Logs(req, 200);
+  } else {
+    res.redirect("/login");
+    Logs(req, 302);
+  }
+});
+
+//Login
+app.get("/login", (req, res) => {
+  Cookies = req.cookies;
+  if (Cookies["Auth"] == process.env.ManagementToken) {
+    res.redirect("/management");
+    Logs(req, 302);
+    return;
+  }
+  res.sendFile(__dirname + "/AdminPages/Login.html");
+  Logs(req, 200);
+});
+
+app.post("/login", (req, res) => {
+  var password = req.body.password;
+  if (password == process.env.Password) {
+    res.cookie("Auth", process.env.ManagementToken);
+    res.redirect("/management");
+    Logs(req, 200);
+  } else {
+    res.sendStatus(403);
+    Logs(req, 403);
+  }
+});
+
 app.listen(process.env.PORT, () => {
   console.log(`Server is running on http://localhost:${process.env.PORT}`);
 });
-
-//Keepalive sql requests
-setInterval(function () {
-  readconnection.query("SELECT 1");
-  writeconnection.query("SELECT 1");
-}, 1000 * 60);
 
 //What the backend will need to acomplish
 //Write logs to the database (done)
@@ -286,3 +365,6 @@ setInterval(function () {
 //Read the projects to the frontend
 //Get the backend to send emails to users when they comment
 //Respect weather a project is viewable or not
+//Add an images folder that can be added to the pages by using an image tag in html
+//Add a login screen that is the only way to access the management menu
+//Add a way to delete projects

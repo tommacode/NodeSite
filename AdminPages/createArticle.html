@@ -11,7 +11,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Add/Edit articles</title>
-    <link rel="stylesheet" href="css.css" />
+    <link rel="stylesheet" href="../css.css" />
   </head>
   <body>
     <div id="frosted">
@@ -44,6 +44,7 @@
             placeholder="Content"
             id="Content-field"
             style="width: 35vw"
+            oninput="Preview()"
           ></textarea>
           <input
             type="text"
@@ -59,6 +60,14 @@
           <input type="button" onclick="SubmitNew()" value="Create" />
         </form>
         <p style="display: none" id="Response"></p>
+      </div>
+      <div class="borders">
+        <p id="previewContent">Preview</p>
+      </div>
+      <div class="borders">
+        <h3>Document Stats</h3>
+        <p><b>Words: </b><span id="wordcount">0</span></p>
+        <p><b>Characters: </b><span id="charactercount">0</span></p>
       </div>
       <div id="footer">
         <h3>Footer</h3>
@@ -119,6 +128,16 @@
                 "<b>Response:</b> " + http.responseText;
             }
           };
+        }
+        function Preview() {
+          var content = document.getElementById("Content-field").value;
+          document.getElementById("previewContent").innerHTML = content;
+          var wordcounter = document.getElementById("wordcount");
+          var charactercounter = document.getElementById("charactercount");
+          var words = content.split(" ");
+          var characters = content.length;
+          wordcounter.innerHTML = words.length;
+          charactercounter.innerHTML = characters;
         }
       </script>
     </div>

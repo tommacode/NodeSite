@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Login</title>
+    <link rel="stylesheet" href="css.css" />
+  </head>
+  <body>
+    <div class="borders">
+      <center>
+        <h1>Login</h1>
+        <br />
+        <form action="/login" method="post">
+          <input type="text" name="username" placeholder="Username" />
+          <br />
+          <input type="password" name="password" placeholder="Password" />
+          <br />
+          <input type="submit" value="Login" />
+        </form>
+      </center>
+    </div>
+    <script>
+      //Post the form with ajax
+      document.querySelector("form").addEventListener("submit", (e) => {
+        e.preventDefault();
+        let form = e.target;
+        fetch(form.action, {
+          method: form.method,
+          //send the data the same way that the form would send it
+          body: new URLSearchParams(new FormData(form)),
+        }).then((res) => {
+          if (res.status != 200) {
+            alert("Invalid credentials");
+          } else {
+            window.location.href = "/management";
+          }
+        });
+      });
+    </script>
+  </body>
+</html>
