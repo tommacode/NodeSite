@@ -6,8 +6,11 @@ const path = require("path");
 app.use(express.static(path.join(__dirname, "Pages")));
 const mysql = require("mysql");
 //body parser
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+const bodyParser = require("body-parser");
+app.use(bodyParser.urlencoded({ extended: true }));
+app.use(bodyParser.json());
+//app.use(express.json());
+//app.use(express.urlencoded({ extended: true }));
 //Send grid
 const sgMail = require("@sendgrid/mail");
 sgMail.setApiKey(process.env.SG_API_KEY);
@@ -17,9 +20,15 @@ const rateLimit = require("express-rate-limit");
 if (process.env.PROXIED == "true") {
   app.set("trust proxy", 1);
 }
+//express-fileupload
+const fileUpload = require("express-fileupload");
+app.use(fileUpload());
 
 const cookies = require("cookie-parser");
 app.use(cookies());
+
+//Headers
+app.set('x-powered-by', false);
 
 //Rate limit
 const CommentLimit = rateLimit({
@@ -149,6 +158,16 @@ app.get("/robots.txt", (req, res) => {
   Logs(req, 200);
 });
 
+app.get("/photos/:photo", (req, res) => {
+  try {
+    var photo = req.params.photo;
+    res.sendFile(__dirname + "/Photos/" + photo);
+    Logs(req, 200);
+  } catch (err) {
+    console.log("/photos/:photo");
+  }
+});
+
 //Likes
 app.get("/api/projects/:project/like", (req, res) => {
   var project = req.params.project;
@@ -188,9 +207,12 @@ app.post("/api/projects/:project/comment", CommentLimit, (req, res) => {
   //Get Current time as datetime
   const date = new Date();
   const datetime = date.toISOString().slice(0, 19).replace("T", " ");
+  //Create random id with letters and numbers
+  const id = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
   //Make sure that the comment is not empty and doesn't contain any html
   if (comment != "" && !comment.includes("<script>")) {
-    if (req.body.email != "") {
+    console.log(req.body.email)
+    if (req.body.email != "" && req.body.email != undefined) {
       var email = req.body.email;
       //Send Email With sendgrid
       const msg = {
@@ -200,18 +222,18 @@ app.post("/api/projects/:project/comment", CommentLimit, (req, res) => {
         text: `Hi ${name},\n\nThanks for leaving a comment on our website.The comment was:${comment} posted at:${datetime}`,
       };
       sgMail.send(msg);
-      sql = `INSERT INTO Comments (Time, Project, Name, Email, Content, Likes) VALUES ("${datetime}", "${project}", "${name}", "${email}", "${comment}", 0)`;
+      sql = `INSERT INTO Comments (Time, Project, Name, Email, Content, unique_id, Likes) VALUES ("${datetime}", "${project}", "${name}", "${email}", "${comment}", "${id}", 0)`;
     } else {
-      sql = `INSERT INTO Comments (Time, Project, Name, Content, Likes) VALUES ("${datetime}", "${project}", "${name}", "${comment}", 0)`;
+      sql = `INSERT INTO Comments (Time, Project, Name, Content, unique_id, Likes) VALUES ("${datetime}", "${project}", "${name}", "${comment}", "${id}", 0)`;
     }
     writeconnection = CreateWrite();
     writeconnection.query(sql, function (err, result) {
       if (err) throw err;
-      writeconnection.end();
+      res.cookie("comment", id, { maxAge: 900000, httpOnly: true });
+      res.send(id, 200);
+      Logs(req, 200);
     });
     //Send response
-    res.sendStatus(204);
-    Logs(req, 204);
   } else {
     res.sendStatus(400);
     Logs(req, 400);
@@ -222,18 +244,52 @@ app.get("/api/projects/:project/comments", (req, res) => {
   var project = req.params.project;
   project = project.replaceAll("-", " ");
   readconnection = CreateRead();
-  sql = `SELECT Name,Content,Likes FROM Comments WHERE Project = "${project}"`;
+  sql = `SELECT Name,Content,Likes,Unique_id FROM Comments Where Project = "${project}" ORDER BY FIELD(Unique_id, "${req.cookies.comment}") DESC, Likes DESC`;
   readconnection.query(sql, function (err, result) {
     if (err) throw err;
+    if (result.length > 0) {
+      if (result[0].Unique_id == req.cookies.comment) {
+        result[0].Name = result[0].Name + " (You)";
+      }
+    }
     res.send(result);
+    readconnection.end()
     Logs(req, 200);
-    readconnection.end();
+  });
+
+});
+
+//Comment likes
+app.get("/api/comments/:id/like", (req, res) => {
+  var id = req.params.id;
+  writeconnection = CreateWrite();
+  sql = `UPDATE Comments SET Likes = Likes + 1 WHERE unique_id = "${id}"`;
+  //Write to database
+  writeconnection.query(sql, function (err, result) {
+    if (err) throw err;
+    writeconnection.end();
+    res.sendStatus(204);
+    Logs(req, 204);
   });
 });
 
+app.get("/api/comments/:id/dislike", (req, res) => {
+  var id = req.params.id;
+  writeconnection = CreateWrite();
+  sql = `UPDATE Comments SET Likes = Likes - 1 WHERE unique_id = "${id}"`;
+  //Write to database
+  writeconnection.query(sql, function (err, result) {
+    if (err) throw err;
+    writeconnection.end();
+    res.sendStatus(204);
+    Logs(req, 204);
+  });
+});
+
+
 //Post Data
 app.post("/api/projects/new", (req, res) => {
-  const password = req.body.password;
+  const password = req.cookies.Auth;
   var title = req.body.title;
   var appetizer = req.body.appetizer;
   var Content = req.body.content;
@@ -246,7 +302,7 @@ app.post("/api/projects/new", (req, res) => {
   Content = Content.replaceAll('"', '""');
   tags = tags.replaceAll('"', '""');
 
-  if (password == process.env.PASSWORD) {
+  if (password == process.env.ManagementToken) {
     //Send Email With sendgrid
     const msg = {
       to: process.env.EMAIL,
@@ -267,15 +323,16 @@ app.post("/api/projects/new", (req, res) => {
     sql = `INSERT INTO Projects (Time, Title, Appetizer, Content, Tags, Status, Likes) VALUES ("${datetime}", "${title}", "${appetizer}", "${Content}", "${tags}", "${Status}", 0)`;
     writeconnection.query(sql, function (err, result) {
       if (err) throw err;
+      writeconnection.end();
       res.send(`Successfully added project the visibility is set to ${Status}`);
       Logs(req, 200);
-      writeconnection.end();
     });
   } else {
     res.send("Incorrect Password");
     Logs(req, 403);
   }
 });
+
 
 //Deployment
 app.get("/deployment/:Token", (req, res) => {
@@ -326,6 +383,19 @@ app.get("/management/CreateArticle", (req, res) => {
   } else {
     res.redirect("/login");
     Logs(req, 302);
+  }
+});
+
+app.get("/api/showImages", (req, res) => {
+  Cookies = req.cookies;
+  if (Cookies["Auth"] == process.env.ManagementToken) {
+    const fs = require("fs");
+    var files = fs.readdirSync(__dirname + "/Photos");
+    res.send(files);
+    Logs(req, 200);
+  } else {
+    res.sendStatus(403);
+    Logs(req, 403);
   }
 });
 

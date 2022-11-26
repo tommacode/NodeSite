@@ -26,202 +26,7 @@
       itemprop="description"
       content="Read the full article on Tomblake.me /articles"
     />
-    <style>
-      * {
-        margin: 0;
-        font-family: "Poppins", sans-serif;
-        z-index: 0;
-      }
-
-      #content {
-        display: none;
-      }
-
-      html {
-        --border-thickness: 5px;
-        --vert-margins: 2.5vh;
-        background-color: hsla(136, 10%, 7%, 1);
-        background-image: radial-gradient(
-            at 59% 37%,
-            hsla(335, 100%, 16%, 1) 0px,
-            transparent 50%
-          ),
-          radial-gradient(
-            at 70% 56%,
-            hsla(222, 100%, 8%, 1) 0px,
-            transparent 50%
-          ),
-          radial-gradient(at 66% 95%, hsla(16, 0%, 0%, 1) 0px, transparent 50%),
-          radial-gradient(
-            at 16% 65%,
-            hsla(358, 100%, 28%, 1) 0px,
-            transparent 50%
-          ),
-          radial-gradient(
-            at 21% 13%,
-            hsla(193, 100%, 15%, 1) 0px,
-            transparent 50%
-          ),
-          radial-gradient(
-            at 93% 28%,
-            hsla(21, 71%, 63%, 1) 0px,
-            transparent 50%
-          );
-      }
-      .linkBar {
-        list-style-type: none;
-        margin-top: 2vh;
-        position: sticky;
-      }
-      .linkBar li {
-        display: inline-block;
-        padding-right: 2vw;
-        font-size: 1.125rem;
-        padding-top: 0;
-        font-weight: 400;
-      }
-      .listLink {
-        text-decoration: none;
-        color: white;
-      }
-      body {
-        min-height: 100vh;
-        color: white;
-        width: 50%;
-        margin-left: 25%;
-        font-size: 20px;
-        font-weight: 200;
-      }
-      header h1 {
-        font-size: 3em;
-        font-weight: 600;
-        line-height: 1em;
-      }
-      header h3 {
-        font-weight: 200;
-        line-height: 25px;
-        font-size: 1.25em;
-      }
-      #bio,
-      #skills,
-      #projects,
-      #footer,
-      #create,
-      .borders {
-        margin-top: 5vh;
-        border-bottom: var(--border-thickness) solid white;
-        border-top: var(--border-thickness) solid white;
-        border-radius: 10px;
-        padding-top: var(--vert-margins);
-        padding-bottom: var(--vert-margins);
-        line-height: 1.125em;
-      }
-      h3 {
-        padding-bottom: 1vh;
-      }
-      #footer {
-        text-align: center;
-      }
-      li p {
-        padding-left: 5vw;
-        font-weight: 200;
-        padding-bottom: 1.5vh;
-        font-size: 1em;
-      }
-      li {
-        font-weight: 400;
-        padding-top: 1vh;
-      }
-      button.clearBtn {
-        background: none;
-        border: none;
-        color: white;
-        float: right;
-        font-size: 0.875rem;
-      }
-      .hidden {
-        display: none;
-      }
-      nav ul {
-        list-style-type: none;
-        display: flex;
-        text-align: right;
-        float: right;
-      }
-      nav ul li a {
-        padding: 0;
-        margin: 0;
-        color: white;
-        text-decoration: none;
-        font-weight: 200;
-        padding-left: 5vw;
-      }
-
-      #LoadingScreen {
-        margin-top: 50vh;
-      }
-
-      #LoadingScreen p {
-        margin-top: 5vh;
-      }
-
-      hr {
-        margin-top: 2.5vh;
-        height: 0.25vh;
-        border: none;
-        background-color: #fff;
-        border-radius: 25px;
-      }
-
-      * {
-        --primary: #fff;
-      }
-
-      .dots:before {
-        display: block;
-        height: 5px;
-        width: 5px;
-        content: "";
-        -webkit-animation: spin 1s infinite;
-        animation: spin 1s infinite;
-        border-radius: 100%;
-        -webkit-box-shadow: 20px 0 0 5px var(--primary),
-          -20px 0 0 5px var(--primary);
-        box-shadow: 20px 0 0 5px var(--primary), -20px 0 0 5px var(--primary);
-      }
-
-      @-webkit-keyframes spin {
-        to {
-          -webkit-transform: rotate(360deg);
-          transform: rotate(360deg);
-        }
-      }
-
-      @keyframes spin {
-        to {
-          -webkit-transform: rotate(360deg);
-          transform: rotate(360deg);
-        }
-      }
-
-      /* Media Queries */
-      @media only screen and (max-width: 800px) {
-        body {
-          width: 80%;
-          padding-left: 10%;
-        }
-      }
-      @media only screen and (max-width: 600px) {
-        header h1 {
-          font-size: 3.5rem;
-        }
-        body {
-          width: 96%;
-          padding-left: 2%;
-          margin: 0;
-        }
-      }
-    </style>
+    <link rel="stylesheet" href="../css.css" />
   </head>
   <body onload="LoadComments()">
     <center>
@@ -244,7 +49,7 @@
       <!--Project Thumbnails-->
       <button onclick="like()" id="likeBtn" class="likeBtn">Likes: 0</button>
       <div id="projects">
-        <div>
+        <div class="borders">
           <p style="float: right" id="date">Loading Date</p>
           <h3>Loading</h3>
           <!--Allow there to be html tags put in the content text-->
@@ -279,12 +84,14 @@
             placeholder="Comment*"
           ></textarea>
           <br />
-          <button type="button" onclick="addComment()">Add Comment</button>
+          <button type="button" onclick="addComment(); LoadComments()">
+            Add Comment
+          </button>
         </form>
         <p id="response"></p>
       </div>
       <div id="comments" class="borders">
-        <h3>Comments</h3>
+        <h3 id="commentTitle">Comments</h3>
       </div>
       <div id="footer">
         <h3>Footer</h3>
@@ -454,6 +261,8 @@
       }
       //Load comments
       function LoadComments() {
+        //Clear the comments
+        document.getElementById("comments").innerHTML = "";
         var http = new XMLHttpRequest();
         var currentUrl = window.location.href;
         //extract path from the url
@@ -463,17 +272,64 @@
         http.onreadystatechange = function () {
           if (this.readyState == 4 && this.status == 200) {
             var data = JSON.parse(this.responseText);
+            LikedComment = [];
+            var h3 = document.createElement("h3");
+            h3.innerHTML = `Comments (${data.length})`;
+            document.getElementById("comments").appendChild(h3);
             for (var i = 0; i < data.length; i++) {
               var comment = document.createElement("div");
-              comment.className = "comment";
+              comment.className = "borders";
               var name = document.createElement("h4");
               name.innerHTML = data[i].Name;
               var commentText = document.createElement("p");
               commentText.innerHTML = data[i].Content;
-              Divider = document.createElement("hr");
+              //Add a like button to the comment
+              var likeBtn = document.createElement("button");
+              likeBtn.id = data[i].unique_id;
+              likeBtn.className = "likeBtn";
+              likeBtn.innerHTML = "Likes: " + data[i].Likes;
+              likeBtn.id = data[i].Unique_id;
+              LikedComment.push(likeBtn.id + ": 0");
+              likeBtn.onclick = function () {
+                if (
+                  LikedComment[this.id] == 0 ||
+                  LikedComment[this.id] == undefined
+                ) {
+                  LikedComment[this.id] = 1;
+                  var likes = this.innerHTML;
+                  var likes = likes.substring(7, likes.length);
+                  var likes = parseInt(likes);
+                  likes++;
+                  this.innerHTML = "Likes: " + likes;
+                  var http = new XMLHttpRequest();
+                  var currentUrl = window.location.href;
+                  //extract path from the url
+                  var path = currentUrl.substring(
+                    currentUrl.lastIndexOf("/") + 1
+                  );
+                  http.open("GET", `/api/comments/${this.id}/like/`, true);
+                  http.send();
+                } else {
+                  LikedComment[this.id] = 0;
+                  var likes = this.innerHTML;
+                  var likes = likes.substring(7, likes.length);
+                  var likes = parseInt(likes);
+                  likes--;
+                  this.innerHTML = "Likes: " + likes;
+                  var http = new XMLHttpRequest();
+                  var currentUrl = window.location.href;
+                  //extract path from the url
+                  var path = currentUrl.substring(
+                    currentUrl.lastIndexOf("/") + 1
+                  );
+                  http.open("GET", `/api/comments/${this.id}/dislike`, true);
+                  http.send();
+                }
+              };
+              //Add the comment to the page
               comment.appendChild(name);
               comment.appendChild(commentText);
-              comment.appendChild(Divider);
+              comment.appendChild(likeBtn);
               document.getElementById("comments").appendChild(comment);
             }
           }

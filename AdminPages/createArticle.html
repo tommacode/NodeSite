@@ -13,7 +13,7 @@
     <title>Add/Edit articles</title>
     <link rel="stylesheet" href="../css.css" />
   </head>
-  <body>
+  <body onload="LoadImages()">
     <div id="frosted">
       <nav>
         <ul>
@@ -53,8 +53,6 @@
             style="width: 25vw"
           />
           <br />
-          <input type="password" placeholder="Password" id="password" />
-          <br />
           <button onclick="Visibility()" id="Visibility">Public</button>
           <br />
           <input type="button" onclick="SubmitNew()" value="Create" />
@@ -68,6 +66,10 @@
         <h3>Document Stats</h3>
         <p><b>Words: </b><span id="wordcount">0</span></p>
         <p><b>Characters: </b><span id="charactercount">0</span></p>
+      </div>
+      <div class="borders">
+        <h3>Images:</h3>
+        <div id="images"></div>
       </div>
       <div id="footer">
         <h3>Footer</h3>
@@ -107,14 +109,12 @@
           var content = document.getElementById("Content-field").value;
           var tags = document.getElementById("tags").value;
           var visibility = document.getElementById("Visibility").innerHTML;
-          var password = document.getElementById("password").value;
           console.log(visibility);
           var data = {
             title: title,
             appetizer: appetizer,
             content: content,
             tags: tags,
-            password: password,
             visibility: visibility,
           };
           var http = new XMLHttpRequest();
@@ -138,6 +138,26 @@
           var characters = content.length;
           wordcounter.innerHTML = words.length;
           charactercounter.innerHTML = characters;
+        }
+        function LoadImages() {
+          //Fetch "/api/showImages" to get a list of image names. For each image get the image from "/photos/". Then create this into a small preview with the image name next to it
+          var http = new XMLHttpRequest();
+          http.open("GET", "/api/showImages", true);
+          http.send();
+          http.onreadystatechange = function () {
+            if (http.readyState == 4 && http.status == 200) {
+              var images = JSON.parse(http.responseText);
+              var imageDiv = document.getElementById("images");
+              for (var i = 0; i < images.length; i++) {
+                var image = document.createElement("img");
+                image.src = "/photos/" + images[i];
+                imageDiv.appendChild(image);
+                var imageName = document.createElement("p");
+                imageName.innerHTML = "/photos/" + images[i];
+                imageDiv.appendChild(imageName);
+              }
+            }
+          };
         }
       </script>
     </div>

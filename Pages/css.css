@@ -78,6 +78,22 @@ header h3 {
   line-height: 1.125em;
 }
 
+.CommentDividerUpper {
+  border-top: var(--border-thickness) solid white;
+  border-radius: 10px;
+  padding-top: var(--vert-margins);
+  padding-bottom: var(--vert-margins);
+  line-height: 1.125em;
+}
+
+.CommentDividerLower {
+  border-bottom: var(--border-thickness) solid white;
+  border-radius: 10px;
+  padding-top: var(--vert-margins);
+  padding-bottom: var(--vert-margins);
+  line-height: 1.125em;
+}
+
 h3 {
   padding-bottom: 1vh;
 }
@@ -153,6 +169,11 @@ nav ul li a {
   box-shadow: 20px 0 0 5px var(--primary), -20px 0 0 5px var(--primary);
 }
 
+img {
+  max-width: 50vw;
+  max-height: 50vh;
+}
+
 @-webkit-keyframes spin {
   to {
     -webkit-transform: rotate(360deg);
@@ -168,14 +189,20 @@ nav ul li a {
 }
 
 /* Media Queries */
-@media only screen and (max-width: 800px) {
+
+@media only screen and (max-width: 900px) {
   body {
     width: 80%;
+    margin: 0;
     padding-left: 10%;
+  }
+  img {
+    max-width: 80vw;
+    max-height: 80vh;
   }
 }
 
-@media only screen and (max-width: 600px) {
+@media only screen and (max-width: 700px) {
   header h1 {
     font-size: 3.5rem;
   }
@@ -184,5 +211,10 @@ nav ul li a {
     width: 96%;
     padding-left: 2%;
     margin: 0;
+  }
+
+  img{
+    max-width: 96vw;
+    max-height: 96vh;
   }
 }

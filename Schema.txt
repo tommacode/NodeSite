@@ -28,26 +28,6 @@ Comments(
     Name VARCHAR(16),
     Email VARCHAR(255),
     Content TEXT,
-    Likes INT
+    Likes INT,
+    unique_id VARCHAR(255) NOT NULL
 );
-
-Users(
-    ID INT AUTO_INCREMENT PRIMARY KEY,
-    Name VARCHAR(16),
-    Email VARCHAR(255),
-    Password VARCHAR(255),
-    Status VARCHAR(8),
-    Sudo BOOLEAN
-);
-
-Sessions(
-    ID INT AUTO_INCREMENT PRIMARY KEY,
-    Time TIMESTAMP,
-    User INT,
-    Token VARCHAR(255),
-    IP VARCHAR(64),
-    UserAgent VARCHAR(255)
-);
-
-//Create a basic User
-INSERT INTO Users (Name, Email, Password, Status, Sudo) VALUES ('Tom', 'tbtom.blake36@gmail.com', 'admin', 'active', 1);
