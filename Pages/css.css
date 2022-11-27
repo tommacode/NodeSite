@@ -31,16 +31,33 @@ html {
 
 .linkBar li {
   display: inline-block;
-  padding-right: 2vw;
+  margin-right: 2vw;
   font-size: 1.125rem;
   padding-top: 0;
   font-weight: 400;
 }
 
 .listLink {
+  padding: 0;
+  margin-left: 2vw;
   text-decoration: none;
   color: var(--text-color);
+  text-decoration: none;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0)),
+    linear-gradient(to top, #ffffff, #ffffff);
+  background-size: 10% 1em, 0 0.15em;
+  background-position: 50% 100%, 50% 100%;
+  background-repeat: no-repeat;
+  transition: background-size 400ms;
+  padding-bottom: 5px;
 }
+
+.listLink:hover,
+.listLink:focus{
+  background-size: 0 1em, 75% 0.15em;
+}
+
+
 
 body {
   min-height: 100vh;
@@ -78,22 +95,6 @@ header h3 {
   line-height: 1.125em;
 }
 
-.CommentDividerUpper {
-  border-top: var(--border-thickness) solid white;
-  border-radius: 10px;
-  padding-top: var(--vert-margins);
-  padding-bottom: var(--vert-margins);
-  line-height: 1.125em;
-}
-
-.CommentDividerLower {
-  border-bottom: var(--border-thickness) solid white;
-  border-radius: 10px;
-  padding-top: var(--vert-margins);
-  padding-bottom: var(--vert-margins);
-  line-height: 1.125em;
-}
-
 h3 {
   padding-bottom: 1vh;
 }
@@ -114,12 +115,24 @@ li {
   padding-top: 1vh;
 }
 
-button.clearBtn {
+.clearBtn {
   background: none;
   border: none;
   color: var(--text-color);
   float: right;
   font-size: 0.875rem;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0)),
+  linear-gradient(to top, #ffffff, #ffffff);
+  background-size: 10% 1em, 0 0.15em;
+  background-position: 50% 100%, 50% 100%;
+  background-repeat: no-repeat;
+  transition: background-size 400ms;
+  padding-bottom: 5px;
+}
+
+.clearBtn:hover,
+.clearBtn:focus{
+  background-size: 0 1em, 75% 0.15em;
 }
 
 .hidden {

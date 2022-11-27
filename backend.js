@@ -119,6 +119,11 @@ app.get("/css.css", (req, res) => {
   Logs(req, 200);
 });
 
+app.get("/favicon.ico", (req, res) => {
+  res.sendFile(__dirname + "/Pages/favicon32.ico");
+  Logs(req, 200);
+});
+
 //API responses
 //General
 app.get("/api/projects", (req, res) => {

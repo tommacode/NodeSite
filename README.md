@@ -7,6 +7,8 @@ Here will eventually be the new website for TomBlake.me. I plan to write this in
 ## Possible Ideas
 
 - Add views to articles
+- Create a one time password that will be sent via email to the email address saved
+- Make the loading screen not disapear until everything has loaded
 
 ## Known issues
 
