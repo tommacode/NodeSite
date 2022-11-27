@@ -20,15 +20,12 @@ const rateLimit = require("express-rate-limit");
 if (process.env.PROXIED == "true") {
   app.set("trust proxy", 1);
 }
-//express-fileupload
-const fileUpload = require("express-fileupload");
-app.use(fileUpload());
 
 const cookies = require("cookie-parser");
 app.use(cookies());
 
 //Headers
-app.set('x-powered-by', false);
+app.set("x-powered-by", false);
 
 //Rate limit
 const CommentLimit = rateLimit({
@@ -128,8 +125,13 @@ app.get("/favicon.ico", (req, res) => {
 //General
 app.get("/api/projects", (req, res) => {
   try {
+    cookie = req.cookies;
+    if (cookie["Auth"] == process.env.ManagementToken) {
+      sql = "SELECT Time,Title,Appetizer,Status FROM Projects";
+    } else {
+      sql = `SELECT Time,Title,Appetizer,Status FROM Projects WHERE Status = 1`;
+    }
     readconnection = CreateRead();
-    sql = `SELECT Time,Title,Appetizer FROM Projects`;
     readconnection.query(sql, function (err, result) {
       if (err) throw err;
       res.send(result);
@@ -213,10 +215,12 @@ app.post("/api/projects/:project/comment", CommentLimit, (req, res) => {
   const date = new Date();
   const datetime = date.toISOString().slice(0, 19).replace("T", " ");
   //Create random id with letters and numbers
-  const id = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+  const id =
+    Math.random().toString(36).substring(2, 15) +
+    Math.random().toString(36).substring(2, 15);
   //Make sure that the comment is not empty and doesn't contain any html
   if (comment != "" && !comment.includes("<script>")) {
-    console.log(req.body.email)
+    console.log(req.body.email);
     if (req.body.email != "" && req.body.email != undefined) {
       var email = req.body.email;
       //Send Email With sendgrid
@@ -235,7 +239,7 @@ app.post("/api/projects/:project/comment", CommentLimit, (req, res) => {
     writeconnection.query(sql, function (err, result) {
       if (err) throw err;
       res.cookie("comment", id, { maxAge: 900000, httpOnly: true });
-      res.send(id, 200);
+      res.status(200).body(id);
       Logs(req, 200);
     });
     //Send response
@@ -258,10 +262,9 @@ app.get("/api/projects/:project/comments", (req, res) => {
       }
     }
     res.send(result);
-    readconnection.end()
+    readconnection.end();
     Logs(req, 200);
   });
-
 });
 
 //Comment likes
@@ -290,7 +293,6 @@ app.get("/api/comments/:id/dislike", (req, res) => {
     Logs(req, 204);
   });
 });
-
 
 //Post Data
 app.post("/api/projects/new", (req, res) => {
@@ -337,7 +339,6 @@ app.post("/api/projects/new", (req, res) => {
     Logs(req, 403);
   }
 });
-
 
 //Deployment
 app.get("/deployment/:Token", (req, res) => {
@@ -430,8 +431,8 @@ app.post("/login", (req, res) => {
 
 app.post("/api/projects/:project/visibility", (req, res) => {
   var project = req.params.project;
-  project = project.replaceAll('-', ' ');
-  var cookies = req.cookies
+  project = project.replaceAll("-", " ");
+  var cookies = req.cookies;
   if (cookies["Auth"] == process.env.ManagementToken) {
     writeconnection = CreateWrite();
     //use mysql if statement if status = 1 then set to 0 else set to 1
@@ -441,7 +442,7 @@ app.post("/api/projects/:project/visibility", (req, res) => {
       writeconnection.end();
       res.sendStatus(204);
       Logs(req, 204);
-    })
+    });
   }
 });
 

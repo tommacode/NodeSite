@@ -130,7 +130,7 @@
                 Time.substring(0, 4);
 
               var link = project.Title.replaceAll(" ", "-");
-              projectDiv.innerHTML = `<a href="/projects/${link}"><p style='float: right;'>${Time}</p><h3>${project.Title}</h3><p>${project.Appetizer}</p></a><br/><button id="Visibility" class="clearBtn" onclick="ToggleVisibility('${project.Title}')">Toggle Visibility</button><button id="Delete" class="clearBtn" onclick="Delete('${project.Title}')">Delete</button><button id="Edit" class="clearBtn" onclick="Edit('${project.Title}')">Edit</button>`;
+              projectDiv.innerHTML = `<a href="/projects/${link}"><p style='float: right;'>${Time}</p><h3>${project.Title}</h3><p>${project.Appetizer}</p></a><br/><button id="${project.Title}" class="clearBtn" onclick="ToggleVisibility('${project.Title}')">Toggle Visibility (Currently: ${project.Status})</button><button id="Delete" class="clearBtn" onclick="Delete('${project.Title}')">Delete</button><button id="Edit" class="clearBtn" onclick="Edit('${project.Title}')">Edit</button>`;
               document.getElementById("projects").appendChild(projectDiv);
               HideLoadingScreen();
             }
@@ -151,13 +151,21 @@
           }
         }
         function ToggleVisibility(title) {
-          fetch("/api/projects/" + title, +"/visibility", {
+          url = `/api/projects/${title}/visibility`;
+          fetch(url, {
             method: "POST",
-          }).then((res) => {
-            console.log("Done");
-            //Fix Failed to execute 'fetch' on 'Window': The provided value is not of type 'RequestInit'?
-            //https://stackoverflow.com/questions/65843991/failed-to-execute-fetch-on-window-the-provided-value-is-not-of-type-requestin
           });
+          //Find what value it is currently
+          originalValue = document.getElementById(title).innerHTML;
+          //get the second last character
+          originalValue = originalValue.charAt(originalValue.length - 2);
+          if (originalValue == "1") {
+            document.getElementById(title).innerHTML =
+              "Toggle Visibility (Currently: 0)";
+          } else {
+            document.getElementById(title).innerHTML =
+              "Toggle Visibility (Currently: 1)";
+          }
         }
       </script>
     </div>
