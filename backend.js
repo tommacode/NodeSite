@@ -82,12 +82,12 @@ function Logs(req, StatusCode) {
   console.log(
     `${datetime} | ${ip} | ${forwardedfor} | ${useragent} | ${method} | ${path} | ${StatusCode}`
   );
-  writeconnection = CreateWrite();
+  writeLogs = CreateWrite();
   sql = `INSERT INTO Logs (Time, ip, forwardedfor, useragent, method, path, statuscode) VALUES ("${datetime}", "${ip}", "${forwardedfor}", "${useragent}", "${method}", "${path}", "${StatusCode}")`;
-  writeconnection.query(sql, function (err, result) {
+  writeLogs.query(sql, function (err, result) {
     if (err) throw err;
   });
-  writeconnection.end();
+  writeLogs.end();
 }
 
 //HTML responses
@@ -380,10 +380,10 @@ app.get("/management", (req, res) => {
   }
 });
 
-app.get("/management/CreateArticle", (req, res) => {
+app.get("/management/:Page", (req, res) => {
   Cookies = req.cookies;
   if (Cookies["Auth"] == process.env.ManagementToken) {
-    res.sendFile(__dirname + "/AdminPages/CreateArticle.html");
+    res.sendFile(__dirname + "/AdminPages/" + req.params.Page + ".html");
     Logs(req, 200);
   } else {
     res.redirect("/login");
@@ -425,6 +425,23 @@ app.post("/login", (req, res) => {
   } else {
     res.sendStatus(403);
     Logs(req, 403);
+  }
+});
+
+app.post("/api/projects/:project/visibility", (req, res) => {
+  var project = req.params.project;
+  project = project.replaceAll('-', ' ');
+  var cookies = req.cookies
+  if (cookies["Auth"] == process.env.ManagementToken) {
+    writeconnection = CreateWrite();
+    //use mysql if statement if status = 1 then set to 0 else set to 1
+    sql = `UPDATE Projects SET Status = IF(Status = 1, 0, 1) WHERE title = "${project}"`;
+    writeconnection.query(sql, function (err, result) {
+      if (err) throw err;
+      writeconnection.end();
+      res.sendStatus(204);
+      Logs(req, 204);
+    })
   }
 });
 

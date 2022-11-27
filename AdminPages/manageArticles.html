@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@200;400;600&display=swap"
+      rel="stylesheet"
+    />
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tom Blake</title>
+    <!--Meta Tags-->
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:domain" content="tomblake.me" />
+    <meta
+      name="twitter:title"
+      property="og:title"
+      itemprop="name"
+      content="The webite made by Tom, for Tom"
+    />
+    <meta
+      name="twitter:description"
+      property="og:description"
+      itemprop="description"
+      content="A one page site that says a lot about what I do and who I am"
+    />
+    <link rel="stylesheet" href="../css.css" />
+  </head>
+  <body>
+    <center>
+      <div id="LoadingScreen">
+        <div class="dots"></div>
+        <p>Loading epic content</p>
+      </div>
+    </center>
+    <div id="content">
+      <nav>
+        <ul>
+          <li><a class="listLink" href="/">Home</a></li>
+          <li><a class="listLink" href="/projects">Articles</a></li>
+          <li><a class="listLink" href="/management">Management</a></li>
+        </ul>
+      </nav>
+      <!--Big header to draw attention-->
+      <header>
+        <h1>Manage Articles/Projects</h1>
+      </header>
+      <button id="reset1" class="clearBtn" onclick="ResetAll()">
+        Reset All
+      </button>
+      <!--Search-->
+      <div class="borders">
+        <h3>Search</h3>
+        <input type="text" id="searchBar" placeholder="Search..." />
+        <button id="searchBtn" class="clearBtn" onclick="Search()">
+          Search
+        </button>
+      </div>
+      <!--Project Thumbnails-->
+      <div id="projects"></div>
+      <div id="footer">
+        <h3>Footer</h3>
+        <!--Links-->
+        <ul class="linkBar">
+          <li>
+            <a
+              target="_blank"
+              href="https://github.com/tommacode"
+              class="listLink"
+              >My Github</a
+            >
+          </li>
+          <li>
+            <a
+              target="_blank"
+              href="https://tomhasawebsite.com"
+              class="listLink"
+              >Other Website</a
+            >
+          </li>
+          <li><a href="#" class="listLink">Back to the top!</a></li>
+        </ul>
+      </div>
+      <script>
+        //wait for a few seconds then hide the loading screen and show the content
+        function HideLoadingScreen() {
+          document.getElementById("content").style.display = "block";
+          document.getElementById("LoadingScreen").style.display = "none";
+        }
+        //Send http request to get the projects
+        var http = new XMLHttpRequest();
+        http.open("GET", "/api/projects", true);
+        http.send();
+        http.onreadystatechange = function () {
+          if (this.readyState == 4 && this.status == 200) {
+            var projects = JSON.parse(this.responseText);
+            //reverse for loop
+            for (var i = projects.length - 1; i >= 0; i--) {
+              var project = projects[i];
+              var projectDiv = document.createElement("div");
+              projectDiv.id = "project";
+              //Make projectdiv inherit color
+              projectDiv.style.color = "inherit";
+              var Time = project.Time;
+              //Change the month to words
+              var month = Time.substring(5, 7);
+              parseInt(month);
+              var monthNames = [
+                "January",
+                "February",
+                "March",
+                "April",
+                "May",
+                "June",
+                "July",
+                "August",
+                "September",
+                "October",
+                "November",
+                "December",
+              ];
+              var monthName = monthNames[month - 1];
+              var Time =
+                monthName +
+                " " +
+                Time.substring(8, 10) +
+                ", " +
+                Time.substring(0, 4);
+
+              var link = project.Title.replaceAll(" ", "-");
+              projectDiv.innerHTML = `<a href="/projects/${link}"><p style='float: right;'>${Time}</p><h3>${project.Title}</h3><p>${project.Appetizer}</p></a><br/><button id="Visibility" class="clearBtn" onclick="ToggleVisibility('${project.Title}')">Toggle Visibility</button><button id="Delete" class="clearBtn" onclick="Delete('${project.Title}')">Delete</button><button id="Edit" class="clearBtn" onclick="Edit('${project.Title}')">Edit</button>`;
+              document.getElementById("projects").appendChild(projectDiv);
+              HideLoadingScreen();
+            }
+          }
+        };
+        //Search
+        function Search() {
+          var search = document.getElementById("searchBar").value;
+          var projects = document.getElementById("projects").children;
+          for (var i = 0; i < projects.length; i++) {
+            var project = projects[i];
+            var title = project.children[0].children[1].innerHTML;
+            if (title.toLowerCase().includes(search.toLowerCase())) {
+              project.style.display = "block";
+            } else {
+              project.style.display = "none";
+            }
+          }
+        }
+        function ToggleVisibility(title) {
+          fetch("/api/projects/" + title, +"/visibility", {
+            method: "POST",
+          }).then((res) => {
+            console.log("Done");
+            //Fix Failed to execute 'fetch' on 'Window': The provided value is not of type 'RequestInit'?
+            //https://stackoverflow.com/questions/65843991/failed-to-execute-fetch-on-window-the-provided-value-is-not-of-type-requestin
+          });
+        }
+      </script>
+    </div>
+  </body>
+</html>
