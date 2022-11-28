@@ -148,15 +148,26 @@ app.get("/api/projects/:project", (req, res) => {
     var project = req.params.project;
     project = project.replaceAll("-", " ");
     readconnection = CreateRead();
-    sql = `SELECT * FROM Projects WHERE Title = "${project}"`;
+    var cookies = req.cookies;
+    if (cookies["Auth"] == process.env.ManagementToken) {
+      sql = `SELECT * FROM Projects WHERE Title = "${project}" AND Status = 1`;
+    } else {
+      sql = `SELECT ID,Time,Title,Appetizer,Content,Likes,Status FROM Projects WHERE Title = "${project}" AND Status = 1`;
+    }
     readconnection.query(sql, function (err, result) {
       if (err) throw err;
-      res.send(result);
-      Logs(req, 200);
+      if (result.length == 0) {
+        res.sendStatus(404);
+        Logs(req, 404);
+      } else {
+        res.send(result);
+        Logs(req, 200);
+      }
     });
     readconnection.end();
   } catch (err) {
     console.log("/api/projects/:project");
+    console.log(err);
   }
 });
 
@@ -340,6 +351,35 @@ app.post("/api/projects/new", (req, res) => {
   }
 });
 
+app.post("/api/projects/:id/edit", (req, res) => {
+  const password = req.cookies.Auth;
+
+  if (password == process.env.ManagementToken) {
+    var id = req.params.id;
+    var title = req.body.title;
+    var appetizer = req.body.appetizer;
+    var Content = req.body.content;
+    var tags = req.body.tags;
+
+    //Replace all " with ""
+    title = title.replaceAll('"', '""');
+    appetizer = appetizer.replaceAll('"', '""');
+    Content = Content.replaceAll('"', '""');
+    tags = tags.replaceAll('"', '""');
+    writeconnection = CreateWrite();
+    sql = `UPDATE Projects SET Title = "${title}", Appetizer = "${appetizer}", Content = "${Content}", Tags = "${tags}" WHERE id = ${id}`;
+    writeconnection.query(sql, function (err, result) {
+      if (err) throw err;
+      writeconnection.end();
+      res.send(`Successfully edited project`);
+      Logs(req, 200);
+    });
+  } else {
+    res.sendStatus(403);
+    Logs(req, 403);
+  }
+});
+
 //Deployment
 app.get("/deployment/:Token", (req, res) => {
   var token = req.params.Token;
@@ -431,7 +471,6 @@ app.post("/login", (req, res) => {
 
 app.post("/api/projects/:project/visibility", (req, res) => {
   var project = req.params.project;
-  project = project.replaceAll("-", " ");
   var cookies = req.cookies;
   if (cookies["Auth"] == process.env.ManagementToken) {
     writeconnection = CreateWrite();

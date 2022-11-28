@@ -138,6 +138,10 @@
               document.getElementById("projects").appendChild(projectDiv);
             }
             HideLoadingScreen();
+          } else {
+            //If the request failed
+            document.getElementById("LoadingScreen").innerHTML =
+              "<h1>Failed to load projects</h1>";
           }
         };
         //Search

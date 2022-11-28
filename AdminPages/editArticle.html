@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@200;400;600&display=swap"
+      rel="stylesheet"
+    />
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Add/Edit articles</title>
+    <link rel="stylesheet" href="../css.css" />
+  </head>
+  <body onload="LoadImages(); LoadOriginal()">
+    <div id="frosted">
+      <nav>
+        <ul>
+          <li><a class="listLink" href="/">Home</a></li>
+          <li><a class="listLink" href="/projects">Articles</a></li>
+          <li><a class="listLink" href="/management">Mangement</a></li>
+        </ul>
+      </nav>
+      <!--Big header to draw attention-->
+      <header>
+        <h1>Edit article</h1>
+        <h3>Ammend changes/fix problems</h3>
+      </header>
+      <div id="create">
+        <form>
+          <input
+            type="text"
+            name="title"
+            id="title"
+            placeholder="Title"
+            readonly
+          />
+          <br />
+          <input
+            type="text"
+            id="appetizer"
+            placeholder="Appetizer"
+            style="width: 15vw"
+          />
+          <br />
+          <textarea
+            placeholder="Content"
+            id="Content-field"
+            style="width: 35vw"
+            oninput="Preview()"
+          ></textarea>
+          <input
+            type="text"
+            id="tags"
+            placeholder="Tags (Separate by commas)"
+            style="width: 25vw"
+          />
+          <br />
+          <input type="button" onclick="SubmitChanged()" value="Edit" />
+        </form>
+        <p style="display: none" id="Response"></p>
+      </div>
+      <div class="borders">
+        <p id="previewContent">Preview</p>
+      </div>
+      <div class="borders">
+        <h3>Document Stats</h3>
+        <p><b>Words: </b><span id="wordcount">0</span></p>
+        <p><b>Characters: </b><span id="charactercount">0</span></p>
+      </div>
+      <div class="borders">
+        <h3>Images:</h3>
+        <div id="images"></div>
+      </div>
+      <div id="footer">
+        <h3>Footer</h3>
+        <!--Links-->
+        <ul class="linkBar">
+          <li>
+            <a
+              target="_blank"
+              href="https://github.com/tommacode"
+              class="listLink"
+              >My Github</a
+            >
+          </li>
+          <li>
+            <a
+              target="_blank"
+              href="https://tomhasawebsite.com"
+              class="listLink"
+              >Other Website</a
+            >
+          </li>
+          <li><a href="#" class="listLink">Back to the top!</a></li>
+        </ul>
+      </div>
+      <p id="id" class="hidden"></p>
+      <script>
+        function LoadOriginal() {
+          //Get url parameters
+          var urlParams = new URLSearchParams(window.location.search);
+          var title = urlParams.get("title");
+          fetch(`/api/projects/${title}`)
+            .then((response) => response.json())
+            .then((data) => {
+              document.getElementById("title").value = data[0].Title;
+              document.getElementById("appetizer").value = data[0].Appetizer;
+              document.getElementById("Content-field").value = data[0].Content;
+              document.getElementById("id").innerHTML = data[0].ID;
+            });
+        }
+        function SubmitChanged() {
+          var title = document.getElementById("title").value;
+          var appetizer = document.getElementById("appetizer").value;
+          var content = document.getElementById("Content-field").value;
+          var tags = document.getElementById("tags").value;
+          var data = {
+            title: title,
+            appetizer: appetizer,
+            content: content,
+            tags: tags,
+          };
+          var http = new XMLHttpRequest();
+          http.open(
+            "POST",
+            `/api/projects/${document.getElementById("id").innerHTML}/edit`,
+            true
+          );
+          http.setRequestHeader("Content-Type", "application/json");
+          http.send(JSON.stringify(data));
+          http.onreadystatechange = function () {
+            if (http.readyState == 4 && http.status == 200) {
+              document.getElementById("Response").style.display = "block";
+              document.getElementById("Response").innerHTML =
+                "<b>Response:</b> " + http.responseText;
+            }
+          };
+        }
+        function Preview() {
+          var content = document.getElementById("Content-field").value;
+          document.getElementById("previewContent").innerHTML = content;
+          var wordcounter = document.getElementById("wordcount");
+          var charactercounter = document.getElementById("charactercount");
+          var words = content.split(" ");
+          var characters = content.length;
+          wordcounter.innerHTML = words.length;
+          charactercounter.innerHTML = characters;
+        }
+        function LoadImages() {
+          //Fetch "/api/showImages" to get a list of image names. For each image get the image from "/photos/". Then create this into a small preview with the image name next to it
+          var http = new XMLHttpRequest();
+          http.open("GET", "/api/showImages", true);
+          http.send();
+          http.onreadystatechange = function () {
+            if (http.readyState == 4 && http.status == 200) {
+              var images = JSON.parse(http.responseText);
+              var imageDiv = document.getElementById("images");
+              for (var i = 0; i < images.length; i++) {
+                var image = document.createElement("img");
+                image.src = "/photos/" + images[i];
+                imageDiv.appendChild(image);
+                var imageName = document.createElement("p");
+                imageName.innerHTML = "/photos/" + images[i];
+                imageDiv.appendChild(imageName);
+              }
+            }
+          };
+        }
+      </script>
+    </div>
+  </body>
+</html>

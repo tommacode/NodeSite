@@ -32,7 +32,7 @@
     <center>
       <div id="LoadingScreen">
         <div class="dots"></div>
-        <p>Loading epic content</p>
+        <p id="loadingText">Loading epic content</p>
       </div>
     </center>
     <div id="content">
@@ -131,8 +131,13 @@
       http.open("GET", `/api/projects/${path}`, true);
       http.send();
       http.onreadystatechange = function () {
-        if (this.readyState == 4 && this.status == 200) {
+        if (
+          this.readyState == 4 &&
+          this.status == 200 &&
+          this.responseText != "Not Found"
+        ) {
           var data = JSON.parse(this.responseText);
+          console.log(data);
           document.getElementsByTagName("h1")[0].innerHTML = data[0].Title;
           document.getElementsByTagName("h3")[0].innerHTML = data[0].Appetizer;
           document.getElementById("content-text").innerHTML = data[0].Content;
@@ -166,6 +171,11 @@
             Time.substring(0, 4);
           document.getElementById("date").innerHTML = Time;
           HideLoadingScreen();
+        }
+        //Run a function on 404 error
+        else if (this.status == 404) {
+          document.getElementById("loadingText").innerHTML =
+            "404 Error: Page not found";
         }
       };
       likeValue = 0;
