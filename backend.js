@@ -66,7 +66,7 @@ function Logs(req, StatusCode) {
   //Get IP
   const ip = req.ip;
   //Get Forwarded for
-  var forwardedfor = req.headers["x-forwarded-for"];
+  let forwardedfor = req.headers["x-forwarded-for"];
   if (forwardedfor == undefined) {
     forwardedfor = ip;
   }
@@ -80,7 +80,7 @@ function Logs(req, StatusCode) {
     `${datetime} | ${ip} | ${forwardedfor} | ${useragent} | ${method} | ${path} | ${StatusCode}`
   );
   writeLogs = CreateWrite();
-  sql = `INSERT INTO Logs (Time, ip, forwardedfor, useragent, method, path, statuscode) VALUES ("${datetime}", "${ip}", "${forwardedfor}", "${useragent}", "${method}", "${path}", "${StatusCode}")`;
+  const sql = `INSERT INTO Logs (Time, ip, forwardedfor, useragent, method, path, statuscode) VALUES ("${datetime}", "${ip}", "${forwardedfor}", "${useragent}", "${method}", "${path}", "${StatusCode}")`;
   writeLogs.query(sql, function (err, result) {
     if (err) throw err;
   });
@@ -88,7 +88,6 @@ function Logs(req, StatusCode) {
 }
 
 //HTML responses
-
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "Pages", "index.html"));
   Logs(req, 200);
@@ -100,7 +99,7 @@ app.get("/projects", (req, res) => {
 });
 
 app.get("/projects/*", (req, res) => {
-  project = req.params[0];
+  const project = req.params[0];
   //Check if project exists if it doesn't then redirect back to the nav page
   res.sendFile(__dirname + "/Pages/article.html");
   Logs(req, 200);
@@ -125,13 +124,13 @@ app.get("/favicon.ico", (req, res) => {
 //General
 app.get("/api/projects", (req, res) => {
   try {
-    cookie = req.cookies;
+    const cookie = req.cookies;
     if (cookie["Auth"] == process.env.ManagementToken) {
       sql = "SELECT Time,Title,Appetizer,Status FROM Projects";
     } else {
       sql = `SELECT Time,Title,Appetizer,Status FROM Projects WHERE Status = 1`;
     }
-    readconnection = CreateRead();
+    const readconnection = CreateRead();
     readconnection.query(sql, function (err, result) {
       if (err) throw err;
       res.send(result);
@@ -145,10 +144,11 @@ app.get("/api/projects", (req, res) => {
 
 app.get("/api/projects/:project", (req, res) => {
   try {
-    var project = req.params.project;
+    let project = req.params.project;
     project = project.replaceAll("-", " ");
     readconnection = CreateRead();
     var cookies = req.cookies;
+    let sql;
     if (cookies["Auth"] == process.env.ManagementToken) {
       sql = `SELECT * FROM Projects WHERE Title = "${project}" AND Status = 1`;
     } else {
@@ -188,10 +188,10 @@ app.get("/photos/:photo", (req, res) => {
 
 //Likes
 app.get("/api/projects/:project/like", (req, res) => {
-  var project = req.params.project;
+  let project = req.params.project;
   project = project.replaceAll("-", " ");
-  writeconnection = CreateWrite();
-  sql = `UPDATE Projects SET Likes = Likes + 1 WHERE Title = "${project}"`;
+  const writeconnection = CreateWrite();
+  let sql = `UPDATE Projects SET Likes = Likes + 1 WHERE Title = "${project}"`;
   writeconnection.query(sql, function (err, result) {
     if (err) throw err;
     writeconnection.end();
@@ -201,7 +201,7 @@ app.get("/api/projects/:project/like", (req, res) => {
 });
 
 app.get("/api/projects/:project/dislike", (req, res) => {
-  var project = req.params.project;
+  let project = req.params.project;
   project = project.replaceAll("-", " ");
   writeconnection = CreateWrite();
   sql = `UPDATE Projects SET Likes = Likes - 1 WHERE Title = "${project}"`;
@@ -215,10 +215,10 @@ app.get("/api/projects/:project/dislike", (req, res) => {
 
 //Comments
 app.post("/api/projects/:project/comment", CommentLimit, (req, res) => {
-  var project = req.params.project;
+  let project = req.params.project;
   project = project.replaceAll("-", " ");
-  var comment = req.body.comment;
-  var name = req.body.name;
+  let comment = req.body.comment;
+  let name = req.body.name;
   //Make sure that any " are replaced with ""
   comment = comment.replaceAll('"', '""');
   name = name.replaceAll('"', '""');
@@ -231,9 +231,8 @@ app.post("/api/projects/:project/comment", CommentLimit, (req, res) => {
     Math.random().toString(36).substring(2, 15);
   //Make sure that the comment is not empty and doesn't contain any html
   if (comment != "" && !comment.includes("<script>")) {
-    console.log(req.body.email);
     if (req.body.email != "" && req.body.email != undefined) {
-      var email = req.body.email;
+      const email = req.body.email;
       //Send Email With sendgrid
       const msg = {
         to: email,
@@ -308,11 +307,11 @@ app.get("/api/comments/:id/dislike", (req, res) => {
 //Post Data
 app.post("/api/projects/new", (req, res) => {
   const password = req.cookies.Auth;
-  var title = req.body.title;
-  var appetizer = req.body.appetizer;
-  var Content = req.body.content;
-  var tags = req.body.tags;
-  var Status = req.body.visibility;
+  let title = req.body.title;
+  let appetizer = req.body.appetizer;
+  let Content = req.body.content;
+  let tags = req.body.tags;
+  let Status = req.body.visibility;
 
   //Replace all " with ""
   title = title.replaceAll('"', '""');
@@ -329,7 +328,7 @@ app.post("/api/projects/new", (req, res) => {
       text: `Hello,\n\nSomeone has successfully created a new article on the website (tomblake.me) the details are: Title: ${title} Appetizer: ${appetizer} Content: ${Content} Tags: ${tags} Status: ${Status}`,
     };
     sgMail.send(msg);
-    if ((Status = "Public")) {
+    if (Status == "Public") {
       Status = 1;
     } else {
       Status = 0;
@@ -355,11 +354,11 @@ app.post("/api/projects/:id/edit", (req, res) => {
   const password = req.cookies.Auth;
 
   if (password == process.env.ManagementToken) {
-    var id = req.params.id;
-    var title = req.body.title;
-    var appetizer = req.body.appetizer;
-    var Content = req.body.content;
-    var tags = req.body.tags;
+    let id = req.params.id;
+    let title = req.body.title;
+    let appetizer = req.body.appetizer;
+    let Content = req.body.content;
+    let tags = req.body.tags;
 
     //Replace all " with ""
     title = title.replaceAll('"', '""');
@@ -382,7 +381,7 @@ app.post("/api/projects/:id/edit", (req, res) => {
 
 //Deployment
 app.get("/deployment/:Token", (req, res) => {
-  var token = req.params.Token;
+  let token = req.params.Token;
   if (token == process.env.DeploymentToken) {
     res.send("Deployment Successful");
     Logs(req, 200);
@@ -411,7 +410,7 @@ app.get("/deployment", (req, res) => {
 
 //Management
 app.get("/management", (req, res) => {
-  Cookies = req.cookies;
+  const Cookies = req.cookies;
   if (Cookies["Auth"] == process.env.ManagementToken) {
     res.sendFile(__dirname + "/AdminPages/Management.html");
     Logs(req, 200);
@@ -458,7 +457,7 @@ app.get("/login", (req, res) => {
 });
 
 app.post("/login", (req, res) => {
-  var password = req.body.password;
+  let password = req.body.password;
   if (password == process.env.Password) {
     res.cookie("Auth", process.env.ManagementToken);
     res.redirect("/management");
@@ -470,8 +469,8 @@ app.post("/login", (req, res) => {
 });
 
 app.post("/api/projects/:project/visibility", (req, res) => {
-  var project = req.params.project;
-  var cookies = req.cookies;
+  const project = req.params.project;
+  const cookies = req.cookies;
   if (cookies["Auth"] == process.env.ManagementToken) {
     writeconnection = CreateWrite();
     //use mysql if statement if status = 1 then set to 0 else set to 1

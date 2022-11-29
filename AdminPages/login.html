@@ -8,18 +8,17 @@
     <link rel="stylesheet" href="css.css" />
   </head>
   <body>
-    <div class="borders">
-      <center>
-        <h1>Login</h1>
+    <!--Center the div-->
+    <div class="borders" style="text-align: center">
+      <h1>Login</h1>
+      <br />
+      <form action="/login" method="post">
+        <input type="text" name="username" placeholder="Username" />
         <br />
-        <form action="/login" method="post">
-          <input type="text" name="username" placeholder="Username" />
-          <br />
-          <input type="password" name="password" placeholder="Password" />
-          <br />
-          <input type="submit" value="Login" />
-        </form>
-      </center>
+        <input type="password" name="password" placeholder="Password" />
+        <br />
+        <input type="submit" value="Login" />
+      </form>
     </div>
     <script>
       //Post the form with ajax
