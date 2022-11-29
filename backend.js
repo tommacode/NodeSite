@@ -99,7 +99,6 @@ app.get("/projects", (req, res) => {
 });
 
 app.get("/projects/*", (req, res) => {
-  const project = req.params[0];
   //Check if project exists if it doesn't then redirect back to the nav page
   res.sendFile(__dirname + "/Pages/article.html");
   Logs(req, 200);
@@ -125,6 +124,7 @@ app.get("/favicon.ico", (req, res) => {
 app.get("/api/projects", (req, res) => {
   try {
     const cookie = req.cookies;
+    let sql;
     if (cookie["Auth"] == process.env.ManagementToken) {
       sql = "SELECT Time,Title,Appetizer,Status FROM Projects";
     } else {
@@ -146,8 +146,8 @@ app.get("/api/projects/:project", (req, res) => {
   try {
     let project = req.params.project;
     project = project.replaceAll("-", " ");
-    readconnection = CreateRead();
-    var cookies = req.cookies;
+    const readconnection = CreateRead();
+    const cookies = req.cookies;
     let sql;
     if (cookies["Auth"] == process.env.ManagementToken) {
       sql = `SELECT * FROM Projects WHERE Title = "${project}" AND Status = 1`;
@@ -203,7 +203,7 @@ app.get("/api/projects/:project/like", (req, res) => {
 app.get("/api/projects/:project/dislike", (req, res) => {
   let project = req.params.project;
   project = project.replaceAll("-", " ");
-  writeconnection = CreateWrite();
+  const writeconnection = CreateWrite();
   sql = `UPDATE Projects SET Likes = Likes - 1 WHERE Title = "${project}"`;
   writeconnection.query(sql, function (err, result) {
     if (err) throw err;
@@ -421,7 +421,7 @@ app.get("/management", (req, res) => {
 });
 
 app.get("/management/:Page", (req, res) => {
-  Cookies = req.cookies;
+  const Cookies = req.cookies;
   if (Cookies["Auth"] == process.env.ManagementToken) {
     res.sendFile(__dirname + "/AdminPages/" + req.params.Page + ".html");
     Logs(req, 200);
