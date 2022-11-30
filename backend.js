@@ -26,7 +26,6 @@ app.use(cookies());
 
 //Headers
 app.set("x-powered-by", false);
-
 //Rate limit
 const CommentLimit = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 mins window
@@ -122,53 +121,44 @@ app.get("/favicon.ico", (req, res) => {
 //API responses
 //General
 app.get("/api/projects", (req, res) => {
-  try {
-    const cookie = req.cookies;
-    let sql;
-    if (cookie["Auth"] == process.env.ManagementToken) {
-      sql = "SELECT Time,Title,Appetizer,Status FROM Projects";
-    } else {
-      sql = `SELECT Time,Title,Appetizer,Status FROM Projects WHERE Status = 1`;
-    }
-    const readconnection = CreateRead();
-    readconnection.query(sql, function (err, result) {
-      if (err) throw err;
-      res.send(result);
-      Logs(req, 200);
-    });
-    readconnection.end();
-  } catch (err) {
-    console.log("/api/projects");
+  const cookie = req.cookies;
+  let sql;
+  if (cookie["Auth"] == process.env.ManagementToken) {
+    sql = "SELECT Time,Title,Appetizer,Status FROM Projects";
+  } else {
+    sql = `SELECT Time,Title,Appetizer,Status FROM Projects WHERE Status = 1`;
   }
+  const readconnection = CreateRead();
+  readconnection.query(sql, function (err, result) {
+    if (err) throw err;
+    res.send(result);
+    Logs(req, 200);
+  });
+  readconnection.end();
 });
 
-app.get("/api/projects/:project", (req, res) => {
-  try {
-    let project = req.params.project;
-    project = project.replaceAll("-", " ");
-    const readconnection = CreateRead();
-    const cookies = req.cookies;
-    let sql;
-    if (cookies["Auth"] == process.env.ManagementToken) {
-      sql = `SELECT * FROM Projects WHERE Title = "${project}" AND Status = 1`;
-    } else {
-      sql = `SELECT ID,Time,Title,Appetizer,Content,Likes,Status FROM Projects WHERE Title = "${project}" AND Status = 1`;
-    }
-    readconnection.query(sql, function (err, result) {
-      if (err) throw err;
-      if (result.length == 0) {
-        res.sendStatus(404);
-        Logs(req, 404);
-      } else {
-        res.send(result);
-        Logs(req, 200);
-      }
-    });
-    readconnection.end();
-  } catch (err) {
-    console.log("/api/projects/:project");
-    console.log(err);
+app.get("/api/projects/:project", async (req, res) => {
+  let project = req.params.project;
+  project = project.replaceAll("-", " ");
+  const readconnection = CreateRead();
+  const cookies = req.cookies;
+  let sql;
+  if (cookies["Auth"] == process.env.ManagementToken) {
+    sql = `SELECT * FROM Projects WHERE Title = ? AND Status = 1`;
+  } else {
+    sql = `SELECT ID,Time,Title,Appetizer,Content,Likes FROM Projects WHERE Title = ? AND Status = 1`;
   }
+  readconnection.query(sql, [project], function (err, result) {
+    if (err) throw err;
+    if (result.length == 0) {
+      res.sendStatus(404);
+      Logs(req, 404);
+    } else {
+      res.send(result);
+      Logs(req, 200);
+    }
+    readconnection.end();
+  });
 });
 
 app.get("/robots.txt", (req, res) => {
@@ -204,7 +194,7 @@ app.get("/api/projects/:project/dislike", (req, res) => {
   let project = req.params.project;
   project = project.replaceAll("-", " ");
   const writeconnection = CreateWrite();
-  sql = `UPDATE Projects SET Likes = Likes - 1 WHERE Title = "${project}"`;
+  const sql = `UPDATE Projects SET Likes = Likes - 1 WHERE Title = "${project}"`;
   writeconnection.query(sql, function (err, result) {
     if (err) throw err;
     writeconnection.end();
@@ -241,12 +231,14 @@ app.post("/api/projects/:project/comment", CommentLimit, (req, res) => {
         text: `Hi ${name},\n\nThanks for leaving a comment on our website.The comment was:${comment} posted at:${datetime}`,
       };
       sgMail.send(msg);
-      sql = `INSERT INTO Comments (Time, Project, Name, Email, Content, unique_id, Likes) VALUES ("${datetime}", "${project}", "${name}", "${email}", "${comment}", "${id}", 0)`;
+      const sql = `INSERT INTO Comments (Time, Project, Name, Email, Content, unique_id, Likes) VALUES (?,?,?,?,?,?,?)`;
+      const values = [datetime, project, name, email, comment, id, 0];
     } else {
-      sql = `INSERT INTO Comments (Time, Project, Name, Content, unique_id, Likes) VALUES ("${datetime}", "${project}", "${name}", "${comment}", "${id}", 0)`;
+      const sql = `INSERT INTO Comments (Time, Project, Name, Content, unique_id, Likes) VALUES (?,?,?,?,?,?)`;
+      const values = [datetime, project, name, comment, id, 0];
     }
-    writeconnection = CreateWrite();
-    writeconnection.query(sql, function (err, result) {
+    const writeconnection = CreateWrite();
+    writeconnection.query(sql, values, function (err, result) {
       if (err) throw err;
       res.cookie("comment", id, { maxAge: 900000, httpOnly: true });
       res.status(200).body(id);
@@ -262,19 +254,25 @@ app.post("/api/projects/:project/comment", CommentLimit, (req, res) => {
 app.get("/api/projects/:project/comments", (req, res) => {
   var project = req.params.project;
   project = project.replaceAll("-", " ");
-  readconnection = CreateRead();
-  sql = `SELECT Name,Content,Likes,Unique_id FROM Comments Where Project = "${project}" ORDER BY FIELD(Unique_id, "${req.cookies.comment}") DESC, Likes DESC`;
-  readconnection.query(sql, function (err, result) {
-    if (err) throw err;
-    if (result.length > 0) {
-      if (result[0].Unique_id == req.cookies.comment) {
-        result[0].Name = result[0].Name + " (You)";
+  const readconnection = CreateRead();
+  //const sql = `SELECT Name,Content,Likes,Unique_id FROM Comments Where Project = "${project}" ORDER BY FIELD(Unique_id, "${req.cookies.comment}") DESC, Likes DESC`;
+  //create prepared statement
+  const sql = `SELECT Name,Content,Likes,Unique_id FROM Comments Where Project = ? ORDER BY FIELD(Unique_id, ?) DESC, Likes DESC`;
+  readconnection.query(
+    sql,
+    [project, req.cookies.comment],
+    function (err, result) {
+      if (err) throw err;
+      if (result.length > 0) {
+        if (result[0].Unique_id == req.cookies.comment) {
+          result[0].Name = result[0].Name + " (You)";
+        }
       }
+      res.send(result);
+      readconnection.end();
+      Logs(req, 200);
     }
-    res.send(result);
-    readconnection.end();
-    Logs(req, 200);
-  });
+  );
 });
 
 //Comment likes
@@ -337,13 +335,19 @@ app.post("/api/projects/new", (req, res) => {
     const date = new Date();
     const datetime = date.toISOString().slice(0, 19).replace("T", " ");
     writeconnection = CreateWrite();
-    sql = `INSERT INTO Projects (Time, Title, Appetizer, Content, Tags, Status, Likes) VALUES ("${datetime}", "${title}", "${appetizer}", "${Content}", "${tags}", "${Status}", 0)`;
-    writeconnection.query(sql, function (err, result) {
-      if (err) throw err;
-      writeconnection.end();
-      res.send(`Successfully added project the visibility is set to ${Status}`);
-      Logs(req, 200);
-    });
+    sql = `INSERT INTO Projects (Time, Title, Appetizer, Content, Tags, Status, Likes) VALUES (?, ?, ?, ?, ?, ?, 0)`;
+    writeconnection.query(
+      sql,
+      [datetime, title, appetizer, Content, tags, Status],
+      function (err, result) {
+        if (err) throw err;
+        writeconnection.end();
+        res.send(
+          `Successfully added project the visibility is set to ${Status}`
+        );
+        Logs(req, 200);
+      }
+    );
   } else {
     res.send("Incorrect Password");
     Logs(req, 403);
@@ -357,7 +361,7 @@ app.post("/api/projects/:id/edit", (req, res) => {
     let id = req.params.id;
     let title = req.body.title;
     let appetizer = req.body.appetizer;
-    let Content = req.body.content;
+    let content = req.body.content;
     let tags = req.body.tags;
 
     //Replace all " with ""
@@ -366,46 +370,23 @@ app.post("/api/projects/:id/edit", (req, res) => {
     Content = Content.replaceAll('"', '""');
     tags = tags.replaceAll('"', '""');
     writeconnection = CreateWrite();
-    sql = `UPDATE Projects SET Title = "${title}", Appetizer = "${appetizer}", Content = "${Content}", Tags = "${tags}" WHERE id = ${id}`;
-    writeconnection.query(sql, function (err, result) {
-      if (err) throw err;
-      writeconnection.end();
-      res.send(`Successfully edited project`);
-      Logs(req, 200);
-    });
+    //sql = `UPDATE Projects SET Title = "${title}", Appetizer = "${appetizer}", Content = "${Content}", Tags = "${tags}" WHERE id = ${id}`;
+    //Rewrite statment to use prepared statements
+    sql = `UPDATE Projects SET Title = ?, Appetizer = ?, Content = ?, Tags = ? WHERE id = ?`;
+    writeconnection.query(
+      sql,
+      [title, appetizer, content, tags],
+      function (err, result) {
+        if (err) throw err;
+        writeconnection.end();
+        res.send(`Successfully edited project`);
+        Logs(req, 200);
+      }
+    );
   } else {
     res.sendStatus(403);
     Logs(req, 403);
   }
-});
-
-//Deployment
-app.get("/deployment/:Token", (req, res) => {
-  let token = req.params.Token;
-  if (token == process.env.DeploymentToken) {
-    res.send("Deployment Successful");
-    Logs(req, 200);
-  } else {
-    res.send("Deployment Failed");
-    Logs(req, 403);
-  }
-  //run bash script
-  const { exec } = require("child_process");
-  exec("bash /home/ubuntu/Deploy.sh", (err, stdout, stderr) => {
-    if (err) {
-      //some err occurred
-      console.error(err);
-    } else {
-      // the *entire* stdout and stderr (buffered)
-      console.log(`stdout: ${stdout}`);
-      console.log(`stderr: ${stderr}`);
-    }
-  });
-});
-
-app.get("/deployment", (req, res) => {
-  res.send("Please provide a token");
-  Logs(req, 400);
 });
 
 //Management
@@ -432,7 +413,7 @@ app.get("/management/:Page", (req, res) => {
 });
 
 app.get("/api/showImages", (req, res) => {
-  Cookies = req.cookies;
+  const Cookies = req.cookies;
   if (Cookies["Auth"] == process.env.ManagementToken) {
     const fs = require("fs");
     var files = fs.readdirSync(__dirname + "/Photos");
@@ -474,8 +455,8 @@ app.post("/api/projects/:project/visibility", (req, res) => {
   if (cookies["Auth"] == process.env.ManagementToken) {
     writeconnection = CreateWrite();
     //use mysql if statement if status = 1 then set to 0 else set to 1
-    sql = `UPDATE Projects SET Status = IF(Status = 1, 0, 1) WHERE title = "${project}"`;
-    writeconnection.query(sql, function (err, result) {
+    sql = `UPDATE Projects SET Status = IF(Status = 1, 0, 1) WHERE title = ?`;
+    writeconnection.query(sql, [project], function (err, result) {
       if (err) throw err;
       writeconnection.end();
       res.sendStatus(204);
