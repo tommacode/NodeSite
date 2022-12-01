@@ -78,9 +78,18 @@ function Logs(req, StatusCode) {
   console.log(
     `${datetime} | ${ip} | ${forwardedfor} | ${useragent} | ${method} | ${path} | ${StatusCode}`
   );
-  writeLogs = CreateWrite();
-  const sql = `INSERT INTO Logs (Time, ip, forwardedfor, useragent, method, path, statuscode) VALUES ("${datetime}", "${ip}", "${forwardedfor}", "${useragent}", "${method}", "${path}", "${StatusCode}")`;
-  writeLogs.query(sql, function (err, result) {
+  const writeLogs = CreateWrite();
+  const sql = `INSERT INTO Logs (Time, ip, forwardedfor, useragent, method, path, statuscode) VALUES (?, ?, ?, ?, ?, ?, ?)`;
+  const values = [
+    datetime,
+    ip,
+    forwardedfor,
+    useragent,
+    method,
+    path,
+    StatusCode,
+  ];
+  writeLogs.query(sql, values, function (err, result) {
     if (err) throw err;
   });
   writeLogs.end();
@@ -168,7 +177,7 @@ app.get("/robots.txt", (req, res) => {
 
 app.get("/photos/:photo", (req, res) => {
   try {
-    var photo = req.params.photo;
+    const photo = req.params.photo;
     res.sendFile(__dirname + "/Photos/" + photo);
     Logs(req, 200);
   } catch (err) {
@@ -237,6 +246,8 @@ app.post("/api/projects/:project/comment", CommentLimit, (req, res) => {
       const sql = `INSERT INTO Comments (Time, Project, Name, Content, unique_id, Likes) VALUES (?,?,?,?,?,?)`;
       const values = [datetime, project, name, comment, id, 0];
     }
+    const sql = `INSERT INTO Comments (Time, Project, Name, Content, unique_id, Likes) VALUES (?,?,?,?,?,?)`;
+    const values = [datetime, project, name, comment, id, 0];
     const writeconnection = CreateWrite();
     writeconnection.query(sql, values, function (err, result) {
       if (err) throw err;
@@ -252,7 +263,7 @@ app.post("/api/projects/:project/comment", CommentLimit, (req, res) => {
 });
 
 app.get("/api/projects/:project/comments", (req, res) => {
-  var project = req.params.project;
+  let project = req.params.project;
   project = project.replaceAll("-", " ");
   const readconnection = CreateRead();
   //const sql = `SELECT Name,Content,Likes,Unique_id FROM Comments Where Project = "${project}" ORDER BY FIELD(Unique_id, "${req.cookies.comment}") DESC, Likes DESC`;
@@ -277,7 +288,7 @@ app.get("/api/projects/:project/comments", (req, res) => {
 
 //Comment likes
 app.get("/api/comments/:id/like", (req, res) => {
-  var id = req.params.id;
+  const id = req.params.id;
   writeconnection = CreateWrite();
   sql = `UPDATE Comments SET Likes = Likes + 1 WHERE unique_id = "${id}"`;
   //Write to database
@@ -290,7 +301,7 @@ app.get("/api/comments/:id/like", (req, res) => {
 });
 
 app.get("/api/comments/:id/dislike", (req, res) => {
-  var id = req.params.id;
+  const id = req.params.id;
   writeconnection = CreateWrite();
   sql = `UPDATE Comments SET Likes = Likes - 1 WHERE unique_id = "${id}"`;
   //Write to database
@@ -393,7 +404,7 @@ app.post("/api/projects/:id/edit", (req, res) => {
 app.get("/management", (req, res) => {
   const Cookies = req.cookies;
   if (Cookies["Auth"] == process.env.ManagementToken) {
-    res.sendFile(__dirname + "/AdminPages/Management.html");
+    res.sendFile(__dirname + "/AdminPages/management.html");
     Logs(req, 200);
   } else {
     res.redirect("/login");
@@ -416,7 +427,7 @@ app.get("/api/showImages", (req, res) => {
   const Cookies = req.cookies;
   if (Cookies["Auth"] == process.env.ManagementToken) {
     const fs = require("fs");
-    var files = fs.readdirSync(__dirname + "/Photos");
+    const files = fs.readdirSync(__dirname + "/Photos");
     res.send(files);
     Logs(req, 200);
   } else {
@@ -433,7 +444,7 @@ app.get("/login", (req, res) => {
     Logs(req, 302);
     return;
   }
-  res.sendFile(__dirname + "/AdminPages/Login.html");
+  res.sendFile(__dirname + "/AdminPages/login.html");
   Logs(req, 200);
 });
 
