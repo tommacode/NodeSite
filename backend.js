@@ -22,6 +22,7 @@ if (process.env.PROXIED == "true") {
 }
 
 const cookies = require("cookie-parser");
+const { waitForDebugger } = require("inspector");
 app.use(cookies());
 
 //Headers
@@ -93,6 +94,21 @@ function Logs(req, StatusCode) {
     if (err) throw err;
   });
   writeLogs.end();
+}
+
+function SendEmail(Recipient, Subject, Content) {
+  const msg = {
+    to: Recipient,
+    from: process.env.SENDER_EMAIL,
+    subject: Subject,
+    text: Content,
+  };
+  sgMail.send(msg);
+}
+
+function ValidateEmail(email) {
+  const re = /\S+@\S+\.\S+/;
+  return re.test(email);
 }
 
 //HTML responses
@@ -216,10 +232,10 @@ app.get("/api/projects/:project/dislike", (req, res) => {
 app.post("/api/projects/:project/comment", CommentLimit, (req, res) => {
   let project = req.params.project;
   project = project.replaceAll("-", " ");
+
   let comment = req.body.comment;
-  let name = req.body.name;
-  //Make sure that any " are replaced with ""
   comment = comment.replaceAll('"', '""');
+  let name = req.body.name;
   name = name.replaceAll('"', '""');
   //Get Current time as datetime
   const date = new Date();
@@ -228,38 +244,24 @@ app.post("/api/projects/:project/comment", CommentLimit, (req, res) => {
   const id =
     Math.random().toString(36).substring(2, 15) +
     Math.random().toString(36).substring(2, 15);
-  //Make sure that the comment is not empty and doesn't contain any html
-  if (comment != "" && !comment.includes("<script>")) {
-    if (req.body.email != "" && req.body.email != undefined) {
-      const email = req.body.email;
-      //Send Email With sendgrid
-      const msg = {
-        to: email,
-        from: process.env.SENDER_EMAIL,
-        subject: "Thanks for leaving a comment",
-        text: `Hi ${name},\n\nThanks for leaving a comment on our website.The comment was:${comment} posted at:${datetime}`,
-      };
-      sgMail.send(msg);
-      const sql = `INSERT INTO Comments (Time, Project, Name, Email, Content, unique_id, Likes) VALUES (?,?,?,?,?,?,?)`;
-      const values = [datetime, project, name, email, comment, id, 0];
-    } else {
-      const sql = `INSERT INTO Comments (Time, Project, Name, Content, unique_id, Likes) VALUES (?,?,?,?,?,?)`;
-      const values = [datetime, project, name, comment, id, 0];
-    }
-    const sql = `INSERT INTO Comments (Time, Project, Name, Content, unique_id, Likes) VALUES (?,?,?,?,?,?)`;
-    const values = [datetime, project, name, comment, id, 0];
-    const writeconnection = CreateWrite();
-    writeconnection.query(sql, values, function (err, result) {
-      if (err) throw err;
-      res.cookie("comment", id, { maxAge: 900000, httpOnly: true });
-      res.status(200).body(id);
-      Logs(req, 200);
-    });
-    //Send response
-  } else {
-    res.sendStatus(400);
-    Logs(req, 400);
+
+  if (ValidateEmail(req.body.email)) {
+    SendEmail(
+      req.body.email,
+      "New Comment",
+      `Name: ${name}\nEmail: ${req.body.email}\nComment: ${comment}`
+    );
   }
+
+  const writeconnection = CreateWrite();
+  const sql = `INSERT INTO Comments (Project,Name,Content,Time,Likes,Unique_id) VALUES (?, ?, ?, ?, ?, ?)`;
+  const values = [project, name, comment, datetime, 0, id];
+  writeconnection.query(sql, values, function (err, result) {
+    if (err) throw err;
+    writeconnection.end();
+    res.sendStatus(204);
+    Logs(req, 204);
+  });
 });
 
 app.get("/api/projects/:project/comments", (req, res) => {

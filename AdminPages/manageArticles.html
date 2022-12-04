@@ -129,8 +129,8 @@
                 ", " +
                 Time.substring(0, 4);
 
-              var link = project.Title.replaceAll(" ", "-");
-              projectDiv.innerHTML = `<a href="/projects/${link}"><p style='float: right;'>${Time}</p><h3>${project.Title}</h3><p>${project.Appetizer}</p></a><br/><button id="${project.Title}" class="clearBtn" onclick="ToggleVisibility('${project.Title}')">Toggle Visibility (Currently: ${project.Status})</button><button id="Delete" class="clearBtn" onclick="Delete('${project.Title}')">Delete</button><button id="Edit" class="clearBtn" onclick="Edit('${project.Title}')">Edit</button>`;
+              var dashedTitle = project.Title.replaceAll(" ", "-");
+              projectDiv.innerHTML = `<a href="/projects/${dashedTitle}"><p style='float: right;'>${Time}</p><h3>${project.Title}</h3><p>${project.Appetizer}</p></a><br/><button id="${dashedTitle}" class="clearBtn" onclick="ToggleVisibility('${dashedTitle}')">Toggle Visibility (Currently: ${project.Status})</button><button id="Delete" class="clearBtn" onclick="Delete('${project.Title}')">Delete</button><button id="Edit" class="clearBtn" onclick="Edit('${project.Title}')">Edit</button>`;
               document.getElementById("projects").appendChild(projectDiv);
               HideLoadingScreen();
             }
