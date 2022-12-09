@@ -4,7 +4,7 @@ require("dotenv").config();
 const fs = require("fs");
 const path = require("path");
 app.use(express.static(path.join(__dirname, "Pages")));
-const mysql = require("mysql");
+const mysql = require("mysql2");
 //body parser
 const bodyParser = require("body-parser");
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -33,31 +33,14 @@ const CommentLimit = rateLimit({
   max: 5, // start blocking after the 5th request
   message: 429, //Send too many requests error
 });
-function CreateRead() {
-  const readconnection = mysql.createConnection({
-    host: process.env.DATABASEIP,
-    user: process.env.DATABASEREADUSER,
-    password: process.env.DATABASEPASSWORD,
-    database: process.env.DATABASENAME,
-  });
-  readconnection.connect(function (err) {
-    if (err) throw err;
-  });
-  return readconnection;
-}
 
-function CreateWrite() {
-  const writeconnection = mysql.createConnection({
-    host: process.env.DATABASEIP,
-    user: process.env.DATABASEWRITEUSER,
-    password: process.env.DATABASEPASSWORD,
-    database: process.env.DATABASENAME,
-  });
-  writeconnection.connect(function (err) {
-    if (err) throw err;
-  });
-  return writeconnection;
-}
+const pool = mysql.createPool({
+  connectionLimit: 10,
+  host: process.env.DB_IP,
+  user: process.env.DB_User,
+  password: process.env.DB_Password,
+  database: process.env.DB_Name,
+}).promise();
 
 function Logs(req, StatusCode) {
   const date = new Date();
@@ -79,7 +62,6 @@ function Logs(req, StatusCode) {
   console.log(
     `${datetime} | ${ip} | ${forwardedfor} | ${useragent} | ${method} | ${path} | ${StatusCode}`
   );
-  const writeLogs = CreateWrite();
   const sql = `INSERT INTO Logs (Time, ip, forwardedfor, useragent, method, path, statuscode) VALUES (?, ?, ?, ?, ?, ?, ?)`;
   const values = [
     datetime,
@@ -90,10 +72,7 @@ function Logs(req, StatusCode) {
     path,
     StatusCode,
   ];
-  writeLogs.query(sql, values, function (err, result) {
-    if (err) throw err;
-  });
-  writeLogs.end();
+  pool.query(sql, values)
 }
 
 function SendEmail(Recipient, Subject, Content) {
@@ -145,7 +124,7 @@ app.get("/favicon.ico", (req, res) => {
 
 //API responses
 //General
-app.get("/api/projects", (req, res) => {
+app.get("/api/projects", async (req, res) => {
   const cookie = req.cookies;
   let sql;
   if (cookie["Auth"] == process.env.ManagementToken) {
@@ -153,19 +132,14 @@ app.get("/api/projects", (req, res) => {
   } else {
     sql = `SELECT Time,Title,Appetizer,Status FROM Projects WHERE Status = 1`;
   }
-  const readconnection = CreateRead();
-  readconnection.query(sql, function (err, result) {
-    if (err) throw err;
-    res.send(result);
-    Logs(req, 200);
-  });
-  readconnection.end();
+  const [result] = await pool.query(sql)
+  res.send(result);
+  Logs(req, 200);
 });
 
 app.get("/api/projects/:project", async (req, res) => {
   let project = req.params.project;
   project = project.replaceAll("-", " ");
-  const readconnection = CreateRead();
   const cookies = req.cookies;
   let sql;
   if (cookies["Auth"] == process.env.ManagementToken) {
@@ -173,17 +147,15 @@ app.get("/api/projects/:project", async (req, res) => {
   } else {
     sql = `SELECT ID,Time,Title,Appetizer,Content,Likes FROM Projects WHERE Title = ? AND Status = 1`;
   }
-  readconnection.query(sql, [project], function (err, result) {
-    if (err) throw err;
-    if (result.length == 0) {
-      res.sendStatus(404);
-      Logs(req, 404);
-    } else {
-      res.send(result);
-      Logs(req, 200);
-    }
-    readconnection.end();
-  });
+  const [result] = await pool.query(sql, [project])
+
+  if (result.length == 0) {
+    res.sendStatus(404);
+    Logs(req, 404);
+  } else {
+    res.send(result);
+    Logs(req, 200);
+  }
 });
 
 app.get("/robots.txt", (req, res) => {
@@ -205,27 +177,19 @@ app.get("/photos/:photo", (req, res) => {
 app.get("/api/projects/:project/like", (req, res) => {
   let project = req.params.project;
   project = project.replaceAll("-", " ");
-  const writeconnection = CreateWrite();
-  let sql = `UPDATE Projects SET Likes = Likes + 1 WHERE Title = "${project}"`;
-  writeconnection.query(sql, function (err, result) {
-    if (err) throw err;
-    writeconnection.end();
-    res.sendStatus(204);
-    Logs(req, 204);
-  });
+  const sql = `UPDATE Projects SET Likes = Likes + 1 WHERE Title = "${project}"`;
+  pool.query(sql)
+  res.sendStatus(204);
+  Logs(req, 204);
 });
 
 app.get("/api/projects/:project/dislike", (req, res) => {
   let project = req.params.project;
   project = project.replaceAll("-", " ");
-  const writeconnection = CreateWrite();
   const sql = `UPDATE Projects SET Likes = Likes - 1 WHERE Title = "${project}"`;
-  writeconnection.query(sql, function (err, result) {
-    if (err) throw err;
-    writeconnection.end();
-    res.sendStatus(204);
-    Logs(req, 204);
-  });
+  pool.query(sql)
+  res.sendStatus(204);
+  Logs(req, 204);
 });
 
 //Comments
@@ -252,71 +216,46 @@ app.post("/api/projects/:project/comment", CommentLimit, (req, res) => {
       `Name: ${name}\nEmail: ${req.body.email}\nComment: ${comment}`
     );
   }
-
-  const writeconnection = CreateWrite();
   const sql = `INSERT INTO Comments (Project,Name,Content,Time,Likes,Unique_id) VALUES (?, ?, ?, ?, ?, ?)`;
   const values = [project, name, comment, datetime, 0, id];
-  writeconnection.query(sql, values, function (err, result) {
-    if (err) throw err;
-    writeconnection.end();
-    res.sendStatus(204);
-    Logs(req, 204);
-  });
+  pool.query(sql, values)
+  res.sendStatus(204);
+  Logs(req, 204);
 });
 
-app.get("/api/projects/:project/comments", (req, res) => {
+app.get("/api/projects/:project/comments", async (req, res) => {
   let project = req.params.project;
   project = project.replaceAll("-", " ");
-  const readconnection = CreateRead();
-  //const sql = `SELECT Name,Content,Likes,Unique_id FROM Comments Where Project = "${project}" ORDER BY FIELD(Unique_id, "${req.cookies.comment}") DESC, Likes DESC`;
-  //create prepared statement
   const sql = `SELECT Name,Content,Likes,Unique_id FROM Comments Where Project = ? ORDER BY FIELD(Unique_id, ?) DESC, Likes DESC`;
-  readconnection.query(
-    sql,
-    [project, req.cookies.comment],
-    function (err, result) {
-      if (err) throw err;
-      if (result.length > 0) {
-        if (result[0].Unique_id == req.cookies.comment) {
-          result[0].Name = result[0].Name + " (You)";
-        }
-      }
-      res.send(result);
-      readconnection.end();
-      Logs(req, 200);
+  let [result] = await pool.query(sql, [project, req.cookies.comment])
+  if (result.length > 0) {
+    if (result[0].Unique_id == req.cookies.comment) {
+      result[0].Name = result[0].Name + " (You)";
     }
-  );
+  }
+  res.send(result);
+  Logs(req, 200);
 });
 
 //Comment likes
 app.get("/api/comments/:id/like", (req, res) => {
   const id = req.params.id;
-  writeconnection = CreateWrite();
   sql = `UPDATE Comments SET Likes = Likes + 1 WHERE unique_id = "${id}"`;
-  //Write to database
-  writeconnection.query(sql, function (err, result) {
-    if (err) throw err;
-    writeconnection.end();
-    res.sendStatus(204);
-    Logs(req, 204);
-  });
+  pool.query(sql)
+  res.sendStatus(204);
+  Logs(req, 204);
 });
 
 app.get("/api/comments/:id/dislike", (req, res) => {
   const id = req.params.id;
-  writeconnection = CreateWrite();
   sql = `UPDATE Comments SET Likes = Likes - 1 WHERE unique_id = "${id}"`;
-  //Write to database
-  writeconnection.query(sql, function (err, result) {
-    if (err) throw err;
-    writeconnection.end();
-    res.sendStatus(204);
-    Logs(req, 204);
-  });
+  pool.query(sql)
+  res.sendStatus(204);
+  Logs(req, 204);
 });
 
 //Post Data
-app.post("/api/projects/new", (req, res) => {
+app.post("/api/projects/new", async (req, res) => {
   const password = req.cookies.Auth;
   let title = req.body.title;
   let appetizer = req.body.appetizer;
@@ -347,23 +286,17 @@ app.post("/api/projects/new", (req, res) => {
     //Get current time as datetime
     const date = new Date();
     const datetime = date.toISOString().slice(0, 19).replace("T", " ");
-    writeconnection = CreateWrite();
     sql = `INSERT INTO Projects (Time, Title, Appetizer, Content, Tags, Status, Likes) VALUES (?, ?, ?, ?, ?, ?, 0)`;
-    writeconnection.query(
-      sql,
-      [datetime, title, appetizer, Content, tags, Status],
-      function (err, result) {
-        if (err) throw err;
-        writeconnection.end();
+    await pool.query(sql, [datetime, title, appetizer, Content, tags, Status])
+      .then(() => {
         res.send(
           `Successfully added project the visibility is set to ${Status}`
         );
-        Logs(req, 200);
-      }
-    );
+      })
+    Logs(req, 200);
   } else {
-    res.send("Incorrect Password");
-    Logs(req, 403);
+    res.sendStatus(401);
+    Logs(req, 401);
   }
 });
 
@@ -380,22 +313,13 @@ app.post("/api/projects/:id/edit", (req, res) => {
     //Replace all " with ""
     title = title.replaceAll('"', '""');
     appetizer = appetizer.replaceAll('"', '""');
-    Content = Content.replaceAll('"', '""');
+    content = content.replaceAll('"', '""');
     tags = tags.replaceAll('"', '""');
-    writeconnection = CreateWrite();
     //sql = `UPDATE Projects SET Title = "${title}", Appetizer = "${appetizer}", Content = "${Content}", Tags = "${tags}" WHERE id = ${id}`;
     //Rewrite statment to use prepared statements
     sql = `UPDATE Projects SET Title = ?, Appetizer = ?, Content = ?, Tags = ? WHERE id = ?`;
-    writeconnection.query(
-      sql,
-      [title, appetizer, content, tags],
-      function (err, result) {
-        if (err) throw err;
-        writeconnection.end();
-        res.send(`Successfully edited project`);
-        Logs(req, 200);
-      }
-    );
+    pool.query(sql, [title, appetizer, content, tags, id]);
+    res.send("Successfully updated project")
   } else {
     res.sendStatus(403);
     Logs(req, 403);
@@ -466,15 +390,11 @@ app.post("/api/projects/:project/visibility", (req, res) => {
   const project = req.params.project;
   const cookies = req.cookies;
   if (cookies["Auth"] == process.env.ManagementToken) {
-    writeconnection = CreateWrite();
     //use mysql if statement if status = 1 then set to 0 else set to 1
     sql = `UPDATE Projects SET Status = IF(Status = 1, 0, 1) WHERE title = ?`;
-    writeconnection.query(sql, [project], function (err, result) {
-      if (err) throw err;
-      writeconnection.end();
-      res.sendStatus(204);
-      Logs(req, 204);
-    });
+    pool.query(sql, [project]);
+    res.sendStatus(204);
+    Logs(req, 204);
   }
 });
 
