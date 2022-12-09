@@ -240,7 +240,7 @@ app.get("/api/projects/:project/comments", async (req, res) => {
 //Comment likes
 app.get("/api/comments/:id/like", (req, res) => {
   const id = req.params.id;
-  sql = `UPDATE Comments SET Likes = Likes + 1 WHERE unique_id = "${id}"`;
+  const sql = `UPDATE Comments SET Likes = Likes + 1 WHERE unique_id = "${id}"`;
   pool.query(sql)
   res.sendStatus(204);
   Logs(req, 204);
@@ -364,7 +364,7 @@ app.get("/api/showImages", (req, res) => {
 
 //Login
 app.get("/login", (req, res) => {
-  Cookies = req.cookies;
+  const Cookies = req.cookies;
   if (Cookies["Auth"] == process.env.ManagementToken) {
     res.redirect("/management");
     Logs(req, 302);

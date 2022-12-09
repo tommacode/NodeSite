@@ -115,7 +115,6 @@ li {
 }
 
 .clearBtn {
-  background: none;
   border: none;
   color: var(--text-color);
   float: right;
@@ -167,7 +166,7 @@ nav ul li a {
   text-decoration: underline;
 }
 
-.dots:before {
+#dots:before {
   --primary: #fff;
   display: block;
   height: 5px;
@@ -187,6 +186,16 @@ img {
 
 #project {
   padding-bottom: 3vh;
+}
+
+.center {
+  margin-left: auto;
+  margin-right: auto;
+  margin-top: 3px;
+  margin-bottom: 3px;
+  text-align: center;
+  display: flex;
+  justify-content: center;
 }
 
 @-webkit-keyframes spin {
