@@ -80,7 +80,7 @@ async function Authorised(cookie, pool) {
   if (cookie == undefined) {
     return false
   }
-  let sql = `SELECT UserID FROM sessions WHERE Cookie = ?`
+  let sql = `SELECT UserID FROM Sessions WHERE Cookie = ?`
   let [result] = await pool.query(sql, [cookie])
   if (result[0].UserID == undefined) {
     return false
@@ -221,7 +221,7 @@ app.get("/api/projects/:project/like", async (req, res) => {
     project = project.replaceAll("-", " ");
     let sql = `UPDATE Projects SET Likes = Likes + 1 WHERE Title = "${project}"`;
     pool.query(sql)
-    sql = `INSERT INTO ProjectLikes (Project, UserID) VALUES (?, ?)`;
+    sql = `INSERT INTO projectLikes (Project, UserID) VALUES (?, ?)`;
     pool.query(sql, [project, UserID])
     res.sendStatus(204);
     Logs(req, 204);
@@ -235,7 +235,7 @@ app.get("/api/projects/:project/dislike", async (req, res) => {
     project = project.replaceAll("-", " ");
     let sql = `UPDATE Projects SET Likes = Likes - 1 WHERE Title = "${project}"`;
     pool.query(sql)
-    sql = `DELETE FROM ProjectLikes WHERE Project = ? AND UserID = ?`;
+    sql = `DELETE FROM projectLikes WHERE Project = ? AND UserID = ?`;
     pool.query(sql, [project, UserID])
     res.sendStatus(204);
     Logs(req, 204);
@@ -290,7 +290,7 @@ app.get("/api/projects/:project/comments", async (req, res) => {
   const UserID = await GetUserID(req.cookies["Auth"])
   if (UserID != null) {
     for (let i = 0; i < result.length; i++) {
-      sql = `SELECT count(*) FROM CommentLikes WHERE UserID = ? AND Unique_id = ?`
+      sql = `SELECT count(*) FROM commentLikes WHERE UserID = ? AND Unique_id = ?`
       const [liked] = await pool.query(sql, [UserID, result[i].Unique_id])
       if (liked[0]["count(*)"] == 1) {
         result[i].Liked = true
@@ -310,7 +310,7 @@ app.get("/api/comments/:id/like", async (req, res) => {
     const id = req.params.id;
     let sql = `UPDATE Comments SET Likes = Likes + 1 WHERE unique_id = ?`;
     pool.query(sql, [id])
-    sql = `INSERT INTO CommentLikes (Unique_id, UserID) VALUES (?, ?)`;
+    sql = `INSERT INTO commentLikes (Unique_id, UserID) VALUES (?, ?)`;
     pool.query(sql, [id, UserID])
     res.sendStatus(204);
     Logs(req, 204);
@@ -323,7 +323,7 @@ app.get("/api/comments/:id/dislike", async (req, res) => {
     const id = req.params.id;
     let sql = `UPDATE Comments SET Likes = Likes - 1 WHERE unique_id = ?`;
     pool.query(sql, [id])
-    sql = `DELETE FROM CommentLikes WHERE unique_id = ? AND UserID  = ?`;
+    sql = `DELETE FROM commentLikes WHERE unique_id = ? AND UserID  = ?`;
     pool.query(sql, [id, UserID])
     res.sendStatus(204);
     Logs(req, 204);
@@ -345,7 +345,7 @@ app.post("/api/projects/new", async (req, res) => {
   Content = Content.replaceAll('"', '""');
   tags = tags.replaceAll('"', '""');
 
-  if (password == process.env.ManagementToken) {
+  if (await Authorised(password, pool) == true) {
     //Send Email With sendgrid
     const msg = {
       to: process.env.EMAIL,
@@ -376,10 +376,10 @@ app.post("/api/projects/new", async (req, res) => {
   }
 });
 
-app.post("/api/projects/:id/edit", (req, res) => {
+app.post("/api/projects/:id/edit", async (req, res) => {
   const password = req.cookies.Auth;
 
-  if (password == process.env.ManagementToken) {
+  if (await Authorised(password, pool) == true) {
     let id = req.params.id;
     let title = req.body.title;
     let appetizer = req.body.appetizer;
@@ -488,7 +488,7 @@ app.post("/api/user/login", async (req, res) => {
     const date = new Date();
     const datetime = date.toISOString().slice(0, 19).replace("T", " ");
     const cookie = crypto.createHash('sha256').update(username + datetime + crypto.randomBytes(16).toString("hex")).digest('hex');
-    sql = `INSERT INTO sessions (Cookie, UserID) VALUES (?, ?)`;
+    sql = `INSERT INTO Sessions (Cookie, UserID) VALUES (?, ?)`;
     await pool.query(sql, [cookie, result[0].ID]);
     res.cookie("Auth", cookie);
     res.sendStatus(200);

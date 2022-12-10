@@ -1,4 +1,4 @@
-Logs(
+create table Logs(
     ID INT AUTO_INCREMENT PRIMARY KEY,
     Time TIMESTAMP,
     IP VARCHAR(64),
@@ -9,7 +9,7 @@ Logs(
     StatusCode INT
 );
 
-Projects(
+create table Projects(
     ID INT AUTO_INCREMENT PRIMARY KEY,
     Time TIMESTAMP,
     Title VARCHAR(128),
@@ -21,7 +21,7 @@ Projects(
     Status VARCHAR(8)
 );
 
-Comments(
+create table Comments(
     ID INT AUTO_INCREMENT PRIMARY KEY,
     Time TIMESTAMP,
     Project VARCHAR(128),
@@ -31,7 +31,7 @@ Comments(
     unique_id VARCHAR(255) NOT NULL
 );
 
-Users(
+create table Users(
     ID INT AUTO_INCREMENT PRIMARY KEY,
     Time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     Username VARCHAR(16),
@@ -40,21 +40,25 @@ Users(
     Sudo INT
 );
 
-Sessions(
+create table Sessions(
     ID INT AUTO_INCREMENT PRIMARY KEY,
     Cookie VARCHAR(255),
     UserID INT,
     Time TIMESTAMP
 );
 
-ProjectLikes(
+create table projectLikes(
     ID INT AUTO_INCREMENT PRIMARY KEY,
     Project VARCHAR(128),
     UserID INT
 );
 
-CommentLikes(
+create table commentLikes(
     ID INT AUTO_INCREMENT PRIMARY KEY,
     Unique_id VARCHAR(255),
     UserID INT
 );
+
+create an article in the projects table
+
+INSERT INTO Projects (Title, Appetizer, Content, Tags, Comments, Likes, Status) VALUES ('We are back', 'I said that we would be back', 'This is the new version of the website. The glaring issue with the last site was that you could like one thing multiple times. Now with this website you have to have a user account and you can only like things once. But if you do find any bugs then add it in the comments under this article.', '', '', 0, '');
