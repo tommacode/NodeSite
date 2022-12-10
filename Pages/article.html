@@ -50,6 +50,7 @@
       </header>
       <!--Project Thumbnails-->
       <button onclick="like()" id="likeBtn" class="likeBtn">Likes: 0</button>
+      <p id="likeMessage"></p>
       <div id="projects">
         <div class="borders">
           <p style="float: right" id="date">Loading Date</p>
@@ -58,28 +59,9 @@
           <p id="content-text">Loading Information</p>
         </div>
       </div>
-      <div class="borders">
-        <h3>Write a comment:</h3>
-        <p><sub>* fields are required</sub></p>
+      <div class="borders" id="WriteComment">
+        <h3 id="commentMessage">Write a comment:</h3>
         <form>
-          <input
-            oninput="NameCounter()"
-            type="text"
-            id="name"
-            placeholder="Name*"
-          />
-          <br />
-          <sub id="NameCounterOutput" style="float: right">0/16</sub>
-          <br />
-          <input
-            oninput="EmailCounter()"
-            type="text"
-            id="email"
-            placeholder="Email"
-          />
-          <br />
-          <sub id="EmailCounterOutput" style="float: right">0/255</sub>
-          <br />
           <textarea
             style="width: 45vw"
             id="comment"
@@ -92,7 +74,7 @@
         </form>
         <p id="response"></p>
       </div>
-      <div id="comments" class="borders">
+      <div id="comments">
         <h3 id="commentTitle">Comments</h3>
       </div>
       <div id="footer">
@@ -125,6 +107,7 @@
         document.getElementById("content").style.display = "block";
         document.getElementById("LoadingScreen").style.display = "none";
       }
+      let likeValue;
       //Load Content
       var http = new XMLHttpRequest();
       var currentUrl = window.location.href;
@@ -139,6 +122,7 @@
           this.responseText != "Not Found"
         ) {
           var data = JSON.parse(this.responseText);
+          likeValue = data[0].Liked;
           console.log(data);
           document.getElementsByTagName("h1")[0].innerHTML = data[0].Title;
           document.getElementsByTagName("h3")[0].innerHTML = data[0].Appetizer;
@@ -180,15 +164,14 @@
             "404 Error: Page not found";
         }
       };
-      likeValue = 0;
       function like() {
-        if (likeValue == 0) {
+        if (likeValue == false) {
           var likes = document.getElementById("likeBtn").innerHTML;
           var likes = likes.substring(7, likes.length);
           var likes = parseInt(likes);
           likes++;
           document.getElementById("likeBtn").innerHTML = "Likes: " + likes;
-          likeValue = 1;
+          likeValue = true;
           var http = new XMLHttpRequest();
           var currentUrl = window.location.href;
           var path = currentUrl.substring(currentUrl.lastIndexOf("/") + 1);
@@ -200,7 +183,7 @@
           var likes = parseInt(likes);
           likes--;
           document.getElementById("likeBtn").innerHTML = "Likes: " + likes;
-          likeValue = 0;
+          likeValue = false;
           //Send the like to the server
           var http = new XMLHttpRequest();
           var currentUrl = window.location.href;
@@ -234,12 +217,8 @@
       }
       //Post comment to the server
       function addComment() {
-        var name = document.getElementById("name").value;
-        var email = document.getElementById("email").value;
         var comment = document.getElementById("comment").value;
         //Clear all boxes
-        document.getElementById("name").value = "";
-        document.getElementById("email").value = "";
         document.getElementById("comment").value = "";
         //Send the comment to the server
         var http = new XMLHttpRequest();
@@ -251,7 +230,7 @@
           "Content-type",
           "application/x-www-form-urlencoded"
         );
-        http.send(`name=${name}&email=${email}&comment=${comment}`);
+        http.send(`comment=${comment}`);
         http.onreadystatechange = function () {
           if (this.readyState == 4 && this.status == 204) {
             document.getElementById("response").innerHTML =
@@ -272,6 +251,7 @@
         };
       }
       //Load comments
+
       function LoadComments() {
         //Clear the comments
         document.getElementById("comments").innerHTML = "";
@@ -302,6 +282,9 @@
               likeBtn.innerHTML = "Likes: " + data[i].Likes;
               likeBtn.id = data[i].Unique_id;
               LikedComment.push(likeBtn.id + ": 0");
+              if (data[i].Liked == true) {
+                LikedComment[likeBtn.id] = 1;
+              }
               likeBtn.onclick = function () {
                 if (
                   LikedComment[this.id] == 0 ||
@@ -345,6 +328,7 @@
               document.getElementById("comments").appendChild(comment);
             }
           }
+          document.getElementById("comments").className = "borders";
         };
       }
     </script>

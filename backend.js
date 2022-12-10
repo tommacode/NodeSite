@@ -76,6 +76,33 @@ function Logs(req, StatusCode) {
   pool.query(sql, values)
 }
 
+async function Authorised(cookie, pool) {
+  if (cookie == undefined) {
+    return false
+  }
+  let sql = `SELECT UserID FROM sessions WHERE Cookie = ?`
+  let [result] = await pool.query(sql, [cookie])
+  if (result[0].UserID == undefined) {
+    return false
+  }
+  result = result[0].UserID
+  sql = 'SELECT Sudo FROM Users WHERE ID = ?'
+  let [sudo] = await pool.query(sql, [result])
+  sudo = sudo[0].Sudo
+  if (sudo == 1) {
+    return true
+  }
+}
+
+async function GetUserID(cookie) {
+  if (cookie == undefined) {
+    return null;
+  }
+  let sql = `SELECT UserID FROM Sessions WHERE cookie = ?`;
+  const [result] = await pool.query(sql, [cookie])
+  return result[0].UserID;
+}
+
 function SendEmail(Recipient, Subject, Content) {
   const msg = {
     to: Recipient,
@@ -152,14 +179,16 @@ app.get("/api/projects/:project", async (req, res) => {
   let project = req.params.project;
   project = project.replaceAll("-", " ");
   const cookies = req.cookies;
-  let sql;
-  if (cookies["Auth"] == process.env.ManagementToken) {
-    sql = `SELECT * FROM Projects WHERE Title = ? AND Status = 1`;
-  } else {
-    sql = `SELECT ID,Time,Title,Appetizer,Content,Likes FROM Projects WHERE Title = ? AND Status = 1`;
-  }
+  let sql = `SELECT ID,Time,Title,Appetizer,Content,Likes FROM Projects WHERE Title = ? AND Status = 1`;
   const [result] = await pool.query(sql, [project])
-
+  const UserID = await GetUserID(cookies["Auth"])
+  sql = `SELECT count(*) FROM projectLikes WHERE UserID = ? AND Project = ?`
+  const [liked] = await pool.query(sql, [UserID, project])
+  if (liked[0]["count(*)"] == 1) {
+    result[0].Liked = true
+  } else {
+    result[0].Liked = false
+  }
   if (result.length == 0) {
     res.sendStatus(404);
     Logs(req, 404);
@@ -185,33 +214,40 @@ app.get("/photos/:photo", (req, res) => {
 });
 
 //Likes
-app.get("/api/projects/:project/like", (req, res) => {
-  let project = req.params.project;
-  project = project.replaceAll("-", " ");
-  const sql = `UPDATE Projects SET Likes = Likes + 1 WHERE Title = "${project}"`;
-  pool.query(sql)
-  res.sendStatus(204);
-  Logs(req, 204);
+app.get("/api/projects/:project/like", async (req, res) => {
+  const UserID = await GetUserID(req.cookies["Auth"])
+  if (UserID != null) {
+    let project = req.params.project;
+    project = project.replaceAll("-", " ");
+    let sql = `UPDATE Projects SET Likes = Likes + 1 WHERE Title = "${project}"`;
+    pool.query(sql)
+    sql = `INSERT INTO ProjectLikes (Project, UserID) VALUES (?, ?)`;
+    pool.query(sql, [project, UserID])
+    res.sendStatus(204);
+    Logs(req, 204);
+  }
 });
 
-app.get("/api/projects/:project/dislike", (req, res) => {
-  let project = req.params.project;
-  project = project.replaceAll("-", " ");
-  const sql = `UPDATE Projects SET Likes = Likes - 1 WHERE Title = "${project}"`;
-  pool.query(sql)
-  res.sendStatus(204);
-  Logs(req, 204);
+app.get("/api/projects/:project/dislike", async (req, res) => {
+  const UserID = await GetUserID(req.cookies["Auth"]);
+  if (UserID != null) {
+    let project = req.params.project;
+    project = project.replaceAll("-", " ");
+    let sql = `UPDATE Projects SET Likes = Likes - 1 WHERE Title = "${project}"`;
+    pool.query(sql)
+    sql = `DELETE FROM ProjectLikes WHERE Project = ? AND UserID = ?`;
+    pool.query(sql, [project, UserID])
+    res.sendStatus(204);
+    Logs(req, 204);
+  }
 });
 
 //Comments
-app.post("/api/projects/:project/comment", CommentLimit, (req, res) => {
+app.post("/api/projects/:project/comment", CommentLimit, async (req, res) => {
   let project = req.params.project;
   project = project.replaceAll("-", " ");
-
   let comment = req.body.comment;
   comment = comment.replaceAll('"', '""');
-  let name = req.body.name;
-  name = name.replaceAll('"', '""');
   //Get Current time as datetime
   const date = new Date();
   const datetime = date.toISOString().slice(0, 19).replace("T", " ");
@@ -227,8 +263,9 @@ app.post("/api/projects/:project/comment", CommentLimit, (req, res) => {
       `Name: ${name}\nEmail: ${req.body.email}\nComment: ${comment}`
     );
   }
-  const sql = `INSERT INTO Comments (Project,Name,Content,Time,Likes,Unique_id) VALUES (?, ?, ?, ?, ?, ?)`;
-  const values = [project, name, comment, datetime, 0, id];
+  const UserID = await GetUserID(req.cookies["Auth"]);
+  const sql = `INSERT INTO Comments (Project,UserID,Content,Time,Likes,Unique_id) VALUES (?, ?, ?, ?, ?, ?)`;
+  const values = [project, UserID, comment, datetime, 0, id];
   pool.query(sql, values)
   res.sendStatus(204);
   Logs(req, 204);
@@ -237,11 +274,29 @@ app.post("/api/projects/:project/comment", CommentLimit, (req, res) => {
 app.get("/api/projects/:project/comments", async (req, res) => {
   let project = req.params.project;
   project = project.replaceAll("-", " ");
-  const sql = `SELECT Name,Content,Likes,Unique_id FROM Comments Where Project = ? ORDER BY FIELD(Unique_id, ?) DESC, Likes DESC`;
+  let sql = `SELECT UserID,Content,Likes,Unique_id FROM Comments Where Project = ? ORDER BY FIELD(Unique_id, ?) DESC, Likes DESC`;
   let [result] = await pool.query(sql, [project, req.cookies.comment])
   if (result.length > 0) {
     if (result[0].Unique_id == req.cookies.comment) {
       result[0].Name = result[0].Name + " (You)";
+    }
+  }
+  for (i = 0; i < result.length; i++) {
+    sql = `SELECT Username FROM Users WHERE ID = ?`;
+    const [user] = await pool.query(sql, [result[i].UserID]);
+    result[i].Name = user[0].Username;
+    delete result[i].UserID;
+  }
+  const UserID = await GetUserID(req.cookies["Auth"])
+  if (UserID != null) {
+    for (let i = 0; i < result.length; i++) {
+      sql = `SELECT count(*) FROM CommentLikes WHERE UserID = ? AND Unique_id = ?`
+      const [liked] = await pool.query(sql, [UserID, result[i].Unique_id])
+      if (liked[0]["count(*)"] == 1) {
+        result[i].Liked = true
+      } else {
+        result[i].Liked = false
+      }
     }
   }
   res.send(result);
@@ -249,20 +304,30 @@ app.get("/api/projects/:project/comments", async (req, res) => {
 });
 
 //Comment likes
-app.get("/api/comments/:id/like", (req, res) => {
-  const id = req.params.id;
-  const sql = `UPDATE Comments SET Likes = Likes + 1 WHERE unique_id = "${id}"`;
-  pool.query(sql)
-  res.sendStatus(204);
-  Logs(req, 204);
+app.get("/api/comments/:id/like", async (req, res) => {
+  const UserID = await GetUserID(req.cookies["Auth"])
+  if (UserID != null) {
+    const id = req.params.id;
+    let sql = `UPDATE Comments SET Likes = Likes + 1 WHERE unique_id = ?`;
+    pool.query(sql, [id])
+    sql = `INSERT INTO CommentLikes (Unique_id, UserID) VALUES (?, ?)`;
+    pool.query(sql, [id, UserID])
+    res.sendStatus(204);
+    Logs(req, 204);
+  }
 });
 
-app.get("/api/comments/:id/dislike", (req, res) => {
-  const id = req.params.id;
-  const sql = `UPDATE Comments SET Likes = Likes - 1 WHERE unique_id = "${id}"`;
-  pool.query(sql)
-  res.sendStatus(204);
-  Logs(req, 204);
+app.get("/api/comments/:id/dislike", async (req, res) => {
+  const UserID = await GetUserID(req.cookies["Auth"])
+  if (UserID != null) {
+    const id = req.params.id;
+    let sql = `UPDATE Comments SET Likes = Likes - 1 WHERE unique_id = ?`;
+    pool.query(sql, [id])
+    sql = `DELETE FROM CommentLikes WHERE unique_id = ? AND UserID  = ?`;
+    pool.query(sql, [id, UserID])
+    res.sendStatus(204);
+    Logs(req, 204);
+  }
 });
 
 //Post Data
@@ -328,7 +393,7 @@ app.post("/api/projects/:id/edit", (req, res) => {
     tags = tags.replaceAll('"', '""');
     //sql = `UPDATE Projects SET Title = "${title}", Appetizer = "${appetizer}", Content = "${Content}", Tags = "${tags}" WHERE id = ${id}`;
     //Rewrite statment to use prepared statements
-    sql = `UPDATE Projects SET Title = ?, Appetizer = ?, Content = ?, Tags = ? WHERE id = ?`;
+    let sql = `UPDATE Projects SET Title = ?, Appetizer = ?, Content = ?, Tags = ? WHERE id = ?`;
     pool.query(sql, [title, appetizer, content, tags, id]);
     res.send("Successfully updated project")
   } else {
@@ -336,24 +401,6 @@ app.post("/api/projects/:id/edit", (req, res) => {
     Logs(req, 403);
   }
 });
-
-async function Authorised(cookie, pool) {
-  if (cookie == undefined) {
-    return false
-  }
-  let sql = `SELECT UserID FROM sessions WHERE Cookie = ?`
-  let [result] = await pool.query(sql, [cookie])
-  if (result[0].UserID == undefined) {
-    return false
-  }
-  result = result[0].UserID
-  sql = 'SELECT Sudo FROM Users WHERE ID = ?'
-  let [sudo] = await pool.query(sql, [result])
-  sudo = sudo[0].Sudo
-  if (sudo == 1) {
-    return true
-  }
-}
 
 //Management
 app.get("/management", async (req, res) => {
@@ -400,7 +447,7 @@ app.get("/login", (req, res) => {
 app.post("/api/projects/:project/visibility", (req, res) => {
   const project = req.params.project;
   const cookies = req.cookies;
-  if (Authorised(cookies["Auth"])) {
+  if (Authorised(cookies["Auth"], pool)) {
     //use mysql if statement if status = 1 then set to 0 else set to 1
     let sql = `UPDATE Projects SET Status = IF(Status = 1, 0, 1) WHERE title = ?`;
     pool.query(sql, [project]);
@@ -457,13 +504,13 @@ app.get("/api/user", async (req, res) => {
   let sql = `SELECT * FROM Sessions WHERE Cookie = ?`;
   let [result] = await pool.query(sql, [cookie])
   if (result.length == 1) {
-    sql = `SELECT Username FROM Users WHERE id = ?`;
+    sql = `SELECT Username,Sudo FROM Users WHERE id = ?`;
     [result] = await pool.query(sql, [result[0].UserID]);
     res.send(result[0]);
     Logs(req, 200);
   } else {
-    res.sendStatus(403);
-    Logs(req, 403);
+    res.sendStatus(204);
+    Logs(req, 204);
   }
 });
 

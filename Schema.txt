@@ -25,8 +25,7 @@ Comments(
     ID INT AUTO_INCREMENT PRIMARY KEY,
     Time TIMESTAMP,
     Project VARCHAR(128),
-    Name VARCHAR(16),
-    Email VARCHAR(255),
+    UserID INT,
     Content TEXT,
     Likes INT,
     unique_id VARCHAR(255) NOT NULL
@@ -46,4 +45,16 @@ Sessions(
     Cookie VARCHAR(255),
     UserID INT,
     Time TIMESTAMP
+);
+
+ProjectLikes(
+    ID INT AUTO_INCREMENT PRIMARY KEY,
+    Project VARCHAR(128),
+    UserID INT
+);
+
+CommentLikes(
+    ID INT AUTO_INCREMENT PRIMARY KEY,
+    Unique_id VARCHAR(255),
+    UserID INT
 );
