@@ -20,9 +20,12 @@ const rateLimit = require("express-rate-limit");
 if (process.env.PROXIED == "true") {
   app.set("trust proxy", 1);
 }
+//Password hashing
+const crypto = require("crypto");
 
 const cookies = require("cookie-parser");
 const { waitForDebugger } = require("inspector");
+const { prependOnceListener } = require("process");
 app.use(cookies());
 
 //Headers
@@ -121,6 +124,16 @@ app.get("/favicon.ico", (req, res) => {
   res.sendFile(__dirname + "/Pages/favicon32.ico");
   Logs(req, 200);
 });
+
+app.get('/SignUp', (req, res) => {
+  res.sendFile(__dirname + "/Pages/signUp.html");
+  Logs(req, 200);
+})
+
+app.get('/Login', (req, res) => {
+  res.sendFile(__dirname + "/Pages/login.html");
+  Logs(req, 200);
+})
 
 //API responses
 //General
@@ -248,7 +261,7 @@ app.get("/api/comments/:id/like", (req, res) => {
 
 app.get("/api/comments/:id/dislike", (req, res) => {
   const id = req.params.id;
-  sql = `UPDATE Comments SET Likes = Likes - 1 WHERE unique_id = "${id}"`;
+  const sql = `UPDATE Comments SET Likes = Likes - 1 WHERE unique_id = "${id}"`;
   pool.query(sql)
   res.sendStatus(204);
   Logs(req, 204);
@@ -326,10 +339,30 @@ app.post("/api/projects/:id/edit", (req, res) => {
   }
 });
 
+async function Authorised(cookie, pool) {
+  if (cookie == undefined) {
+    return false
+  }
+  let sql = `SELECT UserID FROM sessions WHERE Cookie = ?`
+  let [result] = await pool.query(sql, [cookie])
+  if (result[0].UserID == undefined) {
+    return false
+  }
+  result = result[0].UserID
+  sql = 'SELECT Sudo FROM Users WHERE ID = ?'
+  let [sudo] = await pool.query(sql, [result])
+  sudo = sudo[0].Sudo
+  if (sudo == 1) {
+    return true
+  } else {
+    return false
+  }
+}
+
 //Management
-app.get("/management", (req, res) => {
+app.get("/management", async (req, res) => {
   const Cookies = req.cookies;
-  if (Cookies["Auth"] == process.env.ManagementToken) {
+  if (await Authorised(Cookies["Auth"], pool) == true) {
     res.sendFile(__dirname + "/AdminPages/management.html");
     Logs(req, 200);
   } else {
@@ -338,9 +371,9 @@ app.get("/management", (req, res) => {
   }
 });
 
-app.get("/management/:Page", (req, res) => {
+app.get("/management/:Page", async (req, res) => {
   const Cookies = req.cookies;
-  if (Cookies["Auth"] == process.env.ManagementToken) {
+  if (await Authorised(Cookies["Auth"], pool)) {
     res.sendFile(__dirname + "/AdminPages/" + req.params.Page + ".html");
     Logs(req, 200);
   } else {
@@ -349,9 +382,9 @@ app.get("/management/:Page", (req, res) => {
   }
 });
 
-app.get("/api/showImages", (req, res) => {
+app.get("/api/showImages", async (req, res) => {
   const Cookies = req.cookies;
-  if (Cookies["Auth"] == process.env.ManagementToken) {
+  if (await Authorised(Cookies["Auth"], pool)) {
     const fs = require("fs");
     const files = fs.readdirSync(__dirname + "/Photos");
     res.send(files);
@@ -364,21 +397,58 @@ app.get("/api/showImages", (req, res) => {
 
 //Login
 app.get("/login", (req, res) => {
-  const Cookies = req.cookies;
-  if (Cookies["Auth"] == process.env.ManagementToken) {
-    res.redirect("/management");
-    Logs(req, 302);
-    return;
-  }
-  res.sendFile(__dirname + "/AdminPages/login.html");
+  res.sendFile(__dirname + "/Pages/login.html");
   Logs(req, 200);
 });
 
-app.post("/login", (req, res) => {
-  let password = req.body.password;
-  if (password == process.env.Password) {
-    res.cookie("Auth", process.env.ManagementToken);
-    res.redirect("/management");
+app.post("/api/projects/:project/visibility", (req, res) => {
+  const project = req.params.project;
+  const cookies = req.cookies;
+  if (Authorised(cookies["Auth"])) {
+    //use mysql if statement if status = 1 then set to 0 else set to 1
+    let sql = `UPDATE Projects SET Status = IF(Status = 1, 0, 1) WHERE title = ?`;
+    pool.query(sql, [project]);
+    res.sendStatus(204);
+    Logs(req, 204);
+  }
+});
+
+//User accounts
+app.post("/api/user/create", async (req, res) => {
+  const username = req.body.username;
+  const password = req.body.password;
+  const email = req.body.email;
+  //Check for the username existing
+  let sql = 'SELECT count(*) FROM Users WHERE Username = ?'
+  const [result] = await pool.query(sql, [username])
+  //Create hash with crypto sha256
+  if (result[0]["count(*)"] == 0) {
+    const passwordHash = crypto.createHash('sha256').update(password).digest('hex');
+    sql = `INSERT INTO Users (Username, Password, Email) VALUES (?, ?, ?)`;
+    pool.query(sql, [username, passwordHash, email]);
+    res.sendStatus(200);
+    Logs(req, 200);
+  } else {
+    res.sendStatus(409);
+    Logs(req, 409);
+  }
+})
+
+app.post("/api/user/login", async (req, res) => {
+  const username = req.body.username;
+  const password = req.body.password;
+  const passwordHash = crypto.createHash('sha256').update(password).digest('hex');
+  let sql = `SELECT * FROM Users WHERE Username = ? AND Password = ?`;
+  const [result] = await pool.query(sql, [username, passwordHash])
+  if (result.length == 1) {
+    //Make a cookie with the username current time and a random number
+    const date = new Date();
+    const datetime = date.toISOString().slice(0, 19).replace("T", " ");
+    const cookie = crypto.createHash('sha256').update(username + datetime + Math.random()).digest('hex');
+    sql = `INSERT INTO sessions (Cookie, UserID) VALUES (?, ?)`;
+    await pool.query(sql, [cookie, result[0].ID]);
+    res.cookie("Auth", cookie);
+    res.sendStatus(200);
     Logs(req, 200);
   } else {
     res.sendStatus(403);
@@ -386,30 +456,21 @@ app.post("/login", (req, res) => {
   }
 });
 
-app.post("/api/projects/:project/visibility", (req, res) => {
-  const project = req.params.project;
-  const cookies = req.cookies;
-  if (cookies["Auth"] == process.env.ManagementToken) {
-    //use mysql if statement if status = 1 then set to 0 else set to 1
-    sql = `UPDATE Projects SET Status = IF(Status = 1, 0, 1) WHERE title = ?`;
-    pool.query(sql, [project]);
-    res.sendStatus(204);
-    Logs(req, 204);
+app.get("/api/user", async (req, res) => {
+  const cookie = req.cookies.Auth;
+  let sql = `SELECT * FROM Sessions WHERE Cookie = ?`;
+  let [result] = await pool.query(sql, [cookie])
+  if (result.length == 1) {
+    sql = `SELECT Username FROM Users WHERE id = ?`;
+    [result] = await pool.query(sql, [result[0].UserID]);
+    res.send(result[0]);
+    Logs(req, 200);
+  } else {
+    res.sendStatus(403);
+    Logs(req, 403);
   }
 });
 
 app.listen(process.env.PORT, () => {
   console.log(`Server is running on http://localhost:${process.env.PORT}`);
 });
-
-//What the backend will need to acomplish
-//Write logs to the database (done)
-//Handle authentication and tokens
-//Handle Passwords (Must get this right)
-//Write new projects to the database
-//Read the projects to the frontend
-//Get the backend to send emails to users when they comment
-//Respect weather a project is viewable or not
-//Add an images folder that can be added to the pages by using an image tag in html
-//Add a login screen that is the only way to access the management menu
-//Add a way to delete projects

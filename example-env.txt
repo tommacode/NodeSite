@@ -1,0 +1,10 @@
+DB_IP=
+DB_User=
+DB_Password=
+DB_Name=
+PORT=
+SG_API_KEY=
+SENDER_EMAIL=
+EMAIL=
+ManagementToken=
+PROIXED=

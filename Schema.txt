@@ -31,3 +31,19 @@ Comments(
     Likes INT,
     unique_id VARCHAR(255) NOT NULL
 );
+
+Users(
+    ID INT AUTO_INCREMENT PRIMARY KEY,
+    Time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    Username VARCHAR(16),
+    Email VARCHAR(255),
+    Password VARCHAR(255),
+    Sudo INT
+);
+
+Sessions(
+    ID INT AUTO_INCREMENT PRIMARY KEY,
+    Cookie VARCHAR(255),
+    UserID INT,
+    Time TIMESTAMP
+);

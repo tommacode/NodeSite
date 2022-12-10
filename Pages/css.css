@@ -198,6 +198,26 @@ img {
   justify-content: center;
 }
 
+.textBox{
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  box-sizing: border-box;
+  font-size: 16px;
+  padding: 6px 6px 6px 12px;
+  transition: width 0.4s ease-in-out;
+  width: 40%;
+}
+
+.button{
+  background-color: #fff;
+  border: none;
+  border-radius: 4px;
+  color: #000;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 6px 12px;
+}
+
 @-webkit-keyframes spin {
   to {
     -webkit-transform: rotate(360deg);
@@ -214,7 +234,7 @@ img {
 
 /* Media Queries */
 
-@media only screen and (max-width: 900px) {
+@media only screen and (max-width: 1000px) {
   body {
     width: 80%;
     margin: 0;

@@ -12,13 +12,24 @@
     <div class="borders" style="text-align: center">
       <h1>Login</h1>
       <br />
-      <form action="/login" method="post">
-        <input type="text" name="username" placeholder="Username" />
+      <form action="/api/user/login" method="post">
+        <input
+          class="textBox"
+          type="text"
+          name="username"
+          placeholder="Username"
+        />
         <br />
-        <input type="password" name="password" placeholder="Password" />
+        <input
+          class="textBox"
+          type="password"
+          name="password"
+          placeholder="Password"
+        />
         <br />
-        <input type="submit" value="Login" />
+        <input class="button" type="submit" value="Login" />
       </form>
+      <a class="listLink" href="/signUp">Don't have an account? Create One</a>
     </div>
     <script>
       //Post the form with ajax
@@ -33,7 +44,8 @@
           if (res.status != 200) {
             alert("Invalid credentials");
           } else {
-            window.location.href = "/management";
+            alert("Logged in");
+            window.location.href = "/";
           }
         });
       });
