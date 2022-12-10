@@ -24,8 +24,6 @@ if (process.env.PROXIED == "true") {
 const crypto = require("crypto");
 
 const cookies = require("cookie-parser");
-const { waitForDebugger } = require("inspector");
-const { prependOnceListener } = require("process");
 app.use(cookies());
 
 //Headers
@@ -299,7 +297,7 @@ app.post("/api/projects/new", async (req, res) => {
     //Get current time as datetime
     const date = new Date();
     const datetime = date.toISOString().slice(0, 19).replace("T", " ");
-    sql = `INSERT INTO Projects (Time, Title, Appetizer, Content, Tags, Status, Likes) VALUES (?, ?, ?, ?, ?, ?, 0)`;
+    const sql = `INSERT INTO Projects (Time, Title, Appetizer, Content, Tags, Status, Likes) VALUES (?, ?, ?, ?, ?, ?, 0)`;
     await pool.query(sql, [datetime, title, appetizer, Content, tags, Status])
       .then(() => {
         res.send(
@@ -354,8 +352,6 @@ async function Authorised(cookie, pool) {
   sudo = sudo[0].Sudo
   if (sudo == 1) {
     return true
-  } else {
-    return false
   }
 }
 
@@ -444,7 +440,7 @@ app.post("/api/user/login", async (req, res) => {
     //Make a cookie with the username current time and a random number
     const date = new Date();
     const datetime = date.toISOString().slice(0, 19).replace("T", " ");
-    const cookie = crypto.createHash('sha256').update(username + datetime + Math.random()).digest('hex');
+    const cookie = crypto.createHash('sha256').update(username + datetime + crypto.randomBytes(16).toString("hex")).digest('hex');
     sql = `INSERT INTO sessions (Cookie, UserID) VALUES (?, ?)`;
     await pool.query(sql, [cookie, result[0].ID]);
     res.cookie("Auth", cookie);
