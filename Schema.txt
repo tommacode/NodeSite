@@ -48,17 +48,15 @@ create table Sessions(
 );
 
 create table projectLikes(
-    ID INT AUTO_INCREMENT PRIMARY KEY,
     Project VARCHAR(128),
     UserID INT
 );
 
 create table commentLikes(
-    ID INT AUTO_INCREMENT PRIMARY KEY,
     Unique_id VARCHAR(255),
     UserID INT
 );
 
-create an article in the projects table
+Make an account sudo
 
-INSERT INTO Projects (Title, Appetizer, Content, Tags, Comments, Likes, Status) VALUES ('We are back', 'I said that we would be back', 'This is the new version of the website. The glaring issue with the last site was that you could like one thing multiple times. Now with this website you have to have a user account and you can only like things once. But if you do find any bugs then add it in the comments under this article.', '', '', 0, '');
+UPDATE Users SET Sudo = 1 WHERE Username = '';

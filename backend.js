@@ -51,9 +51,6 @@ function Logs(req, StatusCode) {
   const ip = req.ip;
   //Get Forwarded for
   let forwardedfor = req.headers["x-forwarded-for"];
-  if (forwardedfor == undefined) {
-    forwardedfor = ip;
-  }
   //Get User Agent
   const useragent = req.headers["user-agent"];
   //Get Method
@@ -98,8 +95,7 @@ async function GetUserID(cookie) {
   if (cookie == undefined) {
     return null;
   }
-  let sql = `SELECT UserID FROM Sessions WHERE cookie = ?`;
-  const [result] = await pool.query(sql, [cookie])
+  const [result] = await pool.query('SELECT UserID FROM Sessions WHERE cookie = ?', [cookie])
   return result[0].UserID;
 }
 
@@ -158,6 +154,21 @@ app.get('/SignUp', (req, res) => {
 app.get('/Login', (req, res) => {
   res.sendFile(__dirname + "/Pages/login.html");
   Logs(req, 200);
+});
+
+app.get('/Logout', (req, res) => {
+  res.clearCookie('Auth');
+  res.redirect('/');
+  Logs(req, 200);
+})
+
+app.get('/myAccount', async (req, res) => {
+  if (GetUserID(req.cookies.Auth) == null) {
+    res.redirect('/Login')
+  } else {
+    res.sendFile(__dirname + "/Pages/myAccount.html");
+    Logs(req, 200);
+  }
 })
 
 //API responses
@@ -189,13 +200,8 @@ app.get("/api/projects/:project", async (req, res) => {
   } else {
     result[0].Liked = false
   }
-  if (result.length == 0) {
-    res.sendStatus(404);
-    Logs(req, 404);
-  } else {
-    res.send(result);
-    Logs(req, 200);
-  }
+  res.send(result);
+  Logs(req, 200);
 });
 
 app.get("/robots.txt", (req, res) => {
@@ -204,13 +210,9 @@ app.get("/robots.txt", (req, res) => {
 });
 
 app.get("/photos/:photo", (req, res) => {
-  try {
-    const photo = req.params.photo;
-    res.sendFile(__dirname + "/Photos/" + photo);
-    Logs(req, 200);
-  } catch (err) {
-    console.log("/photos/:photo");
-  }
+  const photo = req.params.photo;
+  res.sendFile(__dirname + "/Photos/" + photo);
+  Logs(req, 200);
 });
 
 //Likes
@@ -227,6 +229,8 @@ app.get("/api/projects/:project/like", async (req, res) => {
     Logs(req, 204);
   }
 });
+
+
 
 app.get("/api/projects/:project/dislike", async (req, res) => {
   const UserID = await GetUserID(req.cookies["Auth"]);
@@ -256,13 +260,6 @@ app.post("/api/projects/:project/comment", CommentLimit, async (req, res) => {
     Math.random().toString(36).substring(2, 15) +
     Math.random().toString(36).substring(2, 15);
 
-  if (ValidateEmail(req.body.email)) {
-    SendEmail(
-      req.body.email,
-      "New Comment",
-      `Name: ${name}\nEmail: ${req.body.email}\nComment: ${comment}`
-    );
-  }
   const UserID = await GetUserID(req.cookies["Auth"]);
   const sql = `INSERT INTO Comments (Project,UserID,Content,Time,Likes,Unique_id) VALUES (?, ?, ?, ?, ?, ?)`;
   const values = [project, UserID, comment, datetime, 0, id];
@@ -272,30 +269,28 @@ app.post("/api/projects/:project/comment", CommentLimit, async (req, res) => {
 });
 
 app.get("/api/projects/:project/comments", async (req, res) => {
+  //Get the comments for the project
   let project = req.params.project;
   project = project.replaceAll("-", " ");
   let sql = `SELECT UserID,Content,Likes,Unique_id FROM Comments Where Project = ? ORDER BY FIELD(Unique_id, ?) DESC, Likes DESC`;
   let [result] = await pool.query(sql, [project, req.cookies.comment])
-  if (result.length > 0) {
-    if (result[0].Unique_id == req.cookies.comment) {
-      result[0].Name = result[0].Name + " (You)";
-    }
-  }
-  for (i = 0; i < result.length; i++) {
+  //Convert the UserID to the username
+  for (const comment of result) {
     sql = `SELECT Username FROM Users WHERE ID = ?`;
-    const [user] = await pool.query(sql, [result[i].UserID]);
-    result[i].Name = user[0].Username;
-    delete result[i].UserID;
+    const [user] = await pool.query(sql, [comment.UserID]);
+    comment.Name = user[0].Username;
+    delete comment.UserID;
   }
-  const UserID = await GetUserID(req.cookies["Auth"])
-  if (UserID != null) {
-    for (let i = 0; i < result.length; i++) {
+  //If the user is logged in then check if they liked the comment
+  if (await GetUserID(req.cookies["Auth"]) != null) {
+    const UserID = await GetUserID(req.cookies["Auth"]);
+    for (const comment of result) {
       sql = `SELECT count(*) FROM commentLikes WHERE UserID = ? AND Unique_id = ?`
-      const [liked] = await pool.query(sql, [UserID, result[i].Unique_id])
+      const [liked] = await pool.query(sql, [UserID, comment.Unique_id])
       if (liked[0]["count(*)"] == 1) {
-        result[i].Liked = true
+        comment.Liked = true
       } else {
-        result[i].Liked = false
+        comment.Liked = false
       }
     }
   }
@@ -345,7 +340,7 @@ app.post("/api/projects/new", async (req, res) => {
   Content = Content.replaceAll('"', '""');
   tags = tags.replaceAll('"', '""');
 
-  if (await Authorised(password, pool) == true) {
+  if (await Authorised(password, pool)) {
     //Send Email With sendgrid
     const msg = {
       to: process.env.EMAIL,
@@ -379,7 +374,7 @@ app.post("/api/projects/new", async (req, res) => {
 app.post("/api/projects/:id/edit", async (req, res) => {
   const password = req.cookies.Auth;
 
-  if (await Authorised(password, pool) == true) {
+  if (await Authorised(password, pool)) {
     let id = req.params.id;
     let title = req.body.title;
     let appetizer = req.body.appetizer;
@@ -405,7 +400,7 @@ app.post("/api/projects/:id/edit", async (req, res) => {
 //Management
 app.get("/management", async (req, res) => {
   const Cookies = req.cookies;
-  if (await Authorised(Cookies["Auth"], pool) == true) {
+  if (await Authorised(Cookies["Auth"], pool)) {
     res.sendFile(__dirname + "/AdminPages/management.html");
     Logs(req, 200);
   } else {
@@ -428,7 +423,6 @@ app.get("/management/:Page", async (req, res) => {
 app.get("/api/showImages", async (req, res) => {
   const Cookies = req.cookies;
   if (await Authorised(Cookies["Auth"], pool)) {
-    const fs = require("fs");
     const files = fs.readdirSync(__dirname + "/Photos");
     res.send(files);
     Logs(req, 200);
