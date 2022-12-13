@@ -92,46 +92,48 @@
         http.open("GET", "/api/projects", true);
         http.send();
         http.onreadystatechange = function () {
-          if (this.readyState == 4 && this.status == 200) {
+          if (this.readyState == 4) {
             var projects = JSON.parse(this.responseText);
-            //reverse for loop
-            for (var i = projects.length - 1; i >= 0; i--) {
-              var project = projects[i];
-              var projectDiv = document.createElement("div");
-              projectDiv.id = "project";
-              //Make projectdiv inherit color
-              projectDiv.style.color = "inherit";
-              var Time = project.Time;
-              //Change the month to words
-              var month = Time.substring(5, 7);
-              parseInt(month);
-              var monthNames = [
-                "January",
-                "February",
-                "March",
-                "April",
-                "May",
-                "June",
-                "July",
-                "August",
-                "September",
-                "October",
-                "November",
-                "December",
-              ];
-              var monthName = monthNames[month - 1];
-              var Time =
-                monthName +
-                " " +
-                Time.substring(8, 10) +
-                ", " +
-                Time.substring(0, 4);
+            if (projects.length > 0) {
+              //reverse for loop
+              for (var i = projects.length - 1; i >= 0; i--) {
+                var project = projects[i];
+                var projectDiv = document.createElement("div");
+                projectDiv.id = "project";
+                //Make projectdiv inherit color
+                projectDiv.style.color = "inherit";
+                var Time = project.Time;
+                //Change the month to words
+                var month = Time.substring(5, 7);
+                parseInt(month);
+                var monthNames = [
+                  "January",
+                  "February",
+                  "March",
+                  "April",
+                  "May",
+                  "June",
+                  "July",
+                  "August",
+                  "September",
+                  "October",
+                  "November",
+                  "December",
+                ];
+                var monthName = monthNames[month - 1];
+                var Time =
+                  monthName +
+                  " " +
+                  Time.substring(8, 10) +
+                  ", " +
+                  Time.substring(0, 4);
 
-              var dashedTitle = project.Title.replaceAll(" ", "-");
-              projectDiv.innerHTML = `<a href="/projects/${dashedTitle}"><p style='float: right;'>${Time}</p><h3>${project.Title}</h3><p>${project.Appetizer}</p></a><br/><button id="${dashedTitle}" class="clearBtn" onclick="ToggleVisibility('${dashedTitle}')">Toggle Visibility (Currently: ${project.Status})</button><button id="Delete" class="clearBtn" onclick="Delete('${project.Title}')">Delete</button><button id="Edit" class="clearBtn" onclick="Edit('${project.Title}')">Edit</button>`;
-              document.getElementById("projects").appendChild(projectDiv);
-              HideLoadingScreen();
+                var dashedTitle = project.Title.replaceAll(" ", "-");
+                projectDiv.innerHTML = `<a href="/projects/${dashedTitle}"><p style='float: right;'>${Time}</p><h3>${project.Title}</h3><p>${project.Appetizer}</p></a><br/><button id="${dashedTitle}" class="clearBtn" onclick="ToggleVisibility('${dashedTitle}')">Toggle Visibility (Currently: ${project.Status})</button><button id="Delete" class="clearBtn" onclick="Delete('${project.Title}')">Delete</button><button id="Edit" class="clearBtn" onclick="Edit('${project.Title}')">Edit</button>`;
+                document.getElementById("projects").appendChild(projectDiv);
+              }
             }
+            HideLoadingScreen();
           }
         };
         //Search

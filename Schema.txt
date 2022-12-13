@@ -48,7 +48,7 @@ create table Sessions(
 );
 
 create table projectLikes(
-    Project VARCHAR(128),
+    Project INT,
     UserID INT
 );
 
