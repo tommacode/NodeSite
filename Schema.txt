@@ -44,7 +44,12 @@ create table Sessions(
     ID INT AUTO_INCREMENT PRIMARY KEY,
     Cookie VARCHAR(255),
     UserID INT,
-    Time TIMESTAMP
+    TimeCreated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    TimeLastUsed TIMESTAMP,
+    IPCreatedWith VARCHAR(64),
+    UserAgentCreatedWith VARCHAR(255),
+    IPLastSeen VARCHAR(64),
+    UserAgentLastSeen VARCHAR(255)
 );
 
 create table projectLikes(

@@ -19,13 +19,13 @@
       name="twitter:title"
       property="og:title"
       itemprop="name"
-      content="Read the full article on Tomblake.me /articles"
+      content="Read the full article on https://tomblake.me/articles"
     />
     <meta
       name="twitter:description"
       property="og:description"
       itemprop="description"
-      content="Read the full article on Tomblake.me /articles"
+      content="Read the full article on https://tomblake.me/articles"
     />
     <link rel="stylesheet" href="../css.css" />
   </head>
@@ -49,7 +49,9 @@
         <h1>Loading</h1>
       </header>
       <!--Project Thumbnails-->
-      <button onclick="like()" id="likeBtn" class="likeBtn">Likes: 0</button>
+      <button onclick="like(ArticleLikeTimeArray)" id="likeBtn" class="likeBtn">
+        Likes: 0
+      </button>
       <p id="likeMessage"></p>
       <div id="projects">
         <div class="borders">
@@ -164,25 +166,50 @@
             "404 Error: Page not found";
         }
       };
-      function like() {
-        if (likeValue == false) {
-          var likes = document.getElementById("likeBtn").innerHTML;
-          var likes = likes.substring(7, likes.length);
-          var likes = parseInt(likes);
-          likes++;
-          document.getElementById("likeBtn").innerHTML = "Likes: " + likes;
+      ArticleLikeTimeArray = [];
+      function ArticleRateLimit(ArticleLikeTimeArray) {
+        var time = new Date().getTime();
+        ArticleLikeTimeArray.push(time);
+        var count = 0;
+        for (var i = 0; i < ArticleLikeTimeArray.length; i++) {
+          if (ArticleLikeTimeArray[i] > time - 10000) {
+            count++;
+          } else {
+            ArticleLikeTimeArray.splice(i, 1);
+          }
+        }
+        if (count > 5) {
+          return false;
+        } else {
+          return true;
+        }
+      }
+      function like(ArticleLikeTimeArray) {
+        if (likeValue == false && RateLimit(ArticleLikeTimeArray) == true) {
           likeValue = true;
           var http = new XMLHttpRequest();
           var currentUrl = window.location.href;
           var path = currentUrl.substring(currentUrl.lastIndexOf("/") + 1);
           http.open("GET", `/api/projects/${path}/like`, true);
           http.send();
-        } else {
-          var likes = document.getElementById("likeBtn").innerHTML;
-          var likes = likes.substring(7, likes.length);
-          var likes = parseInt(likes);
-          likes--;
-          document.getElementById("likeBtn").innerHTML = "Likes: " + likes;
+          http.onreadystatechange = function () {
+            if (this.readyState == 4 && this.status == 204) {
+              var likes = document.getElementById("likeBtn").innerHTML;
+              var likes = likes.substring(7, likes.length);
+              var likes = parseInt(likes);
+              likes++;
+              document.getElementById("likeBtn").innerHTML = "Likes: " + likes;
+            } else if (this.status == 429) {
+              var time = new Date().getTime();
+              for (var i = 0; i < 5; i++) {
+                ArticleLikeTimeArray.push(time + 60000);
+              }
+            }
+          };
+        } else if (
+          likeValue == true &&
+          RateLimit(ArticleLikeTimeArray) == true
+        ) {
           likeValue = false;
           //Send the like to the server
           var http = new XMLHttpRequest();
@@ -191,6 +218,20 @@
           var path = currentUrl.substring(currentUrl.lastIndexOf("/") + 1);
           http.open("GET", `/api/projects/${path}/dislike`, true);
           http.send();
+          http.onreadystatechange = function () {
+            if (this.readyState == 4 && this.status == 204) {
+              var likes = document.getElementById("likeBtn").innerHTML;
+              var likes = likes.substring(7, likes.length);
+              var likes = parseInt(likes);
+              likes--;
+              document.getElementById("likeBtn").innerHTML = "Likes: " + likes;
+            } else if (this.status == 429) {
+              var time = new Date().getTime();
+              for (var i = 0; i < 5; i++) {
+                ArticleLikeTimeArray.push(time + 60000);
+              }
+            }
+          };
         }
       }
 
@@ -251,7 +292,24 @@
         };
       }
       //Load comments
-
+      CommentLikeTimeArray = [];
+      function CommentLikeRateLimit(CommentLikeTimeArray) {
+        let time = new Date().getTime();
+        CommentLikeTimeArray.push(time);
+        let count = 0;
+        for (var i = 0; i < CommentLikeTimeArray.length; i++) {
+          if (CommentLikeTimeArray[i] > time - 10000) {
+            count++;
+          } else {
+            CommentLikeTimeArray.splice(i, 1);
+          }
+        }
+        if (count > 5) {
+          return false;
+        } else {
+          return true;
+        }
+      }
       function LoadComments() {
         //Clear the comments
         document.getElementById("comments").innerHTML = "";
@@ -286,9 +344,10 @@
                 LikedComment[likeBtn.id] = 1;
               }
               likeBtn.onclick = function () {
+                let Limit = CommentLikeRateLimit(CommentLikeTimeArray);
                 if (
                   LikedComment[this.id] == 0 ||
-                  LikedComment[this.id] == undefined
+                  (LikedComment[this.id] == undefined && Limit == true)
                 ) {
                   LikedComment[this.id] = 1;
                   var likes = this.innerHTML;
@@ -302,9 +361,9 @@
                   var path = currentUrl.substring(
                     currentUrl.lastIndexOf("/") + 1
                   );
-                  http.open("GET", `/api/comments/${this.id}/like/`, true);
+                  http.open("GET", `/api/comments/${this.id}/like`, true);
                   http.send();
-                } else {
+                } else if (Limit == true) {
                   LikedComment[this.id] = 0;
                   var likes = this.innerHTML;
                   var likes = likes.substring(7, likes.length);

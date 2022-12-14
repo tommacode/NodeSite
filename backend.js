@@ -35,6 +35,13 @@ const CommentLimit = rateLimit({
   message: 429, //Send too many requests error
 });
 
+const LikeLimit = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 min window
+  max: 10, // start blocking after the 10th request
+  //Send RateLimit.html as the message
+  message: 429,
+});
+
 const pool = mysql
   .createPool({
     connectionLimit: 10,
@@ -81,7 +88,7 @@ async function Authorised(cookie, pool) {
   }
   let sql = `SELECT UserID FROM Sessions WHERE Cookie = ?`;
   let [result] = await pool.query(sql, [cookie]);
-  if (result[0].UserID == undefined) {
+  if (result.length == 0) {
     return false;
   }
   result = result[0].UserID;
@@ -221,7 +228,7 @@ app.get("/photos/:photo", (req, res) => {
 });
 
 //Likes
-app.get("/api/projects/:project/like", async (req, res) => {
+app.get("/api/projects/:project/like", LikeLimit, async (req, res) => {
   const UserID = await GetUserID(req.cookies["Auth"]);
   if (UserID != null) {
     let project = req.params.project;
@@ -229,7 +236,7 @@ app.get("/api/projects/:project/like", async (req, res) => {
     //Check if user has already liked the project
     let sql = `SELECT count(*) FROM projectLikes WHERE UserID = ? AND Project = ?`;
     let [result] = await pool.query(sql, [UserID, req.params.project]);
-    if (result[0]["count(*)"] < 1) {
+    if (result[0]["count(*)"] == 0) {
       [result] = await pool.query(`SELECT ID FROM Projects WHERE Title = ?`, [
         project,
       ]);
@@ -243,13 +250,11 @@ app.get("/api/projects/:project/like", async (req, res) => {
   }
 });
 
-app.get("/api/projects/:project/dislike", async (req, res) => {
+app.get("/api/projects/:project/dislike", LikeLimit, async (req, res) => {
   const UserID = await GetUserID(req.cookies["Auth"]);
   if (UserID != null) {
     let project = req.params.project;
     project = project.replaceAll("-", " ");
-    let sql = `SELECT count(*) FROM projectLikes WHERE UserID = ? AND Project = ?`;
-    let [result] = await pool.query(sql, [UserID, req.params.project]);
     [result] = await pool.query(`SELECT ID FROM Projects WHERE Title = ?`, [
       project,
     ]);
@@ -532,6 +537,17 @@ app.get("/api/user", async (req, res) => {
   } else {
     res.sendStatus(204);
     Logs(req, 204);
+  }
+});
+
+app.get("/api/user/sessions", async (req, res) => {
+  const cookie = req.cookies.Auth;
+  let UserID = await GetUserID(cookie, pool);
+  if (UserID != null) {
+    let sql = `SELECT TimeCreated,TimeLastUsed,IPCreatedWith,UserAgentCreatedWith,IPLastSeen,UserAgentLastSeen FROM Sessions WHERE UserID = ?`;
+    [result] = await pool.query(sql, [UserID]);
+    res.send(result);
+    Logs(req, 200);
   }
 });
 
