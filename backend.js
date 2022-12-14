@@ -542,7 +542,7 @@ app.get("/api/user", async (req, res) => {
 
 app.get("/api/user/sessions", async (req, res) => {
   const cookie = req.cookies.Auth;
-  let UserID = await GetUserID(cookie, pool);
+  let UserID = await GetUserID(cookie);
   if (UserID != null) {
     let sql = `SELECT TimeCreated,TimeLastUsed,IPCreatedWith,UserAgentCreatedWith,IPLastSeen,UserAgentLastSeen FROM Sessions WHERE UserID = ?`;
     [result] = await pool.query(sql, [UserID]);
