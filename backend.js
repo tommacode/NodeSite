@@ -26,6 +26,9 @@ const crypto = require("crypto");
 const cookies = require("cookie-parser");
 app.use(cookies());
 
+//EJS
+app.set("view engine", "ejs");
+
 //Headers
 app.set("x-powered-by", false);
 //Rate limit
@@ -137,11 +140,11 @@ app.get("/projects", (req, res) => {
   Logs(req, 200);
 });
 
-app.get("/projects/*", (req, res) => {
-  //Check if project exists if it doesn't then redirect back to the nav page
-  res.sendFile(__dirname + "/Pages/article.html");
-  Logs(req, 200);
-});
+//app.get("/projects/*", (req, res) => {
+//  //Check if project exists if it doesn't then redirect back to the nav page
+//  res.sendFile(__dirname + "/Pages/article.html");
+//  Logs(req, 200);
+//});
 
 app.get("/createArticle", (req, res) => {
   res.sendFile(path.join(__dirname, "Pages", "createArticle.html"));
@@ -198,8 +201,8 @@ app.get("/api/projects", async (req, res) => {
   Logs(req, 200);
 });
 
-app.get("/api/projects/:project", async (req, res) => {
-  let project = req.params.project;
+app.get("/projects/*", async (req, res) => {
+  let project = req.path.split("/")[2];
   project = project.replaceAll("-", " ");
   const cookies = req.cookies;
   let sql = `SELECT ID,Time,Title,Appetizer,Content,Likes FROM Projects WHERE Title = ? AND Status = 1`;
@@ -212,7 +215,39 @@ app.get("/api/projects/:project", async (req, res) => {
   } else {
     result[0].Liked = false;
   }
-  res.send(result);
+  sql = `SELECT UserID,Content,Likes,Unique_id FROM Comments Where Project = ? ORDER BY FIELD(Unique_id, ?) DESC, Likes DESC`;
+  let [comments] = await pool.query(sql, [project, req.cookies.comment]);
+  //Convert the UserID to the username
+  for (const comment of comments) {
+    sql = `SELECT Username FROM Users WHERE ID = ?`;
+    const [user] = await pool.query(sql, [comment.UserID]);
+    comment.Name = user[0].Username;
+    delete comment.UserID;
+  }
+  //If the user is logged in then check if they liked the comment
+  if ((await GetUserID(req.cookies["Auth"])) != null) {
+    const UserID = await GetUserID(req.cookies["Auth"]);
+    for (const comment of result) {
+      sql = `SELECT count(*) FROM commentLikes WHERE UserID = ? AND Unique_id = ?`;
+      const [liked] = await pool.query(sql, [UserID, comment.Unique_id]);
+      if (liked[0]["count(*)"] == 1) {
+        comment.Liked = true;
+      } else {
+        comment.Liked = false;
+      }
+    }
+  }
+  //Change the date to a more readable format
+  result[0].Time = result[0].Time.toLocaleDateString("en-GB");
+  res.render(__dirname + "/Pages/article.ejs", {
+    Title: result[0].Title,
+    Content: result[0].Content,
+    Appetizer: result[0].Appetizer,
+    Time: result[0].Time,
+    Likes: result[0].Likes,
+    Liked: result[0].Liked,
+    Comments: comments,
+  });
   Logs(req, 200);
 });
 

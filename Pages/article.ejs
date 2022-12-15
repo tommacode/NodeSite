@@ -11,7 +11,7 @@
     <meta charset="UTF-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Tom Blake</title>
+    <title>Article</title>
     <!--Meta Tags-->
     <meta name="twitter:card" content="summary" />
     <meta name="twitter:domain" content="tomblake.me" />
@@ -46,7 +46,7 @@
       </nav>
       <!--Big header to draw attention-->
       <header>
-        <h1>Loading</h1>
+        <h1><%= Title %></h1>
       </header>
       <!--Project Thumbnails-->
       <button onclick="like(ArticleLikeTimeArray)" id="likeBtn" class="likeBtn">
@@ -55,10 +55,10 @@
       <p id="likeMessage"></p>
       <div id="projects">
         <div class="borders">
-          <p style="float: right" id="date">Loading Date</p>
-          <h3>Loading</h3>
+          <p style="float: right" id="date"><%= Time %></p>
+          <h3><%= Appetizer %></h3>
           <!--Allow there to be html tags put in the content text-->
-          <p id="content-text">Loading Information</p>
+          <p id="content-text"><%= Content %></p>
         </div>
       </div>
       <div class="borders" id="WriteComment">
@@ -70,14 +70,14 @@
             placeholder="Comment*"
           ></textarea>
           <br />
-          <button type="button" onclick="addComment(); LoadComments()">
-            Add Comment
-          </button>
+          <button type="button" onclick="addComment()">Add Comment</button>
         </form>
         <p id="response"></p>
       </div>
       <div id="comments">
         <h3 id="commentTitle">Comments</h3>
+        <!--Use ejs to render the comments the same as the javascript would-->
+        <div id="commentList"></div>
       </div>
       <div id="footer">
         <h3>Footer</h3>
@@ -103,69 +103,20 @@
         </ul>
       </div>
     </div>
+    <p id="Liked" class="hidden"><%= Liked %></p>
+    <p class="hidden" id="Likes"><%= Likes %></p>
     <script>
       //Wait until the content is loaded
       function HideLoadingScreen() {
         document.getElementById("content").style.display = "block";
         document.getElementById("LoadingScreen").style.display = "none";
       }
-      let likeValue;
+      let likeValue = document.getElementById("Liked").innerHTML;
       //Load Content
-      var http = new XMLHttpRequest();
-      var currentUrl = window.location.href;
-      //extract path from the url
-      var path = currentUrl.substring(currentUrl.lastIndexOf("/") + 1);
-      http.open("GET", `/api/projects/${path}`, true);
-      http.send();
-      http.onreadystatechange = function () {
-        if (
-          this.readyState == 4 &&
-          this.status == 200 &&
-          this.responseText != "Not Found"
-        ) {
-          var data = JSON.parse(this.responseText);
-          likeValue = data[0].Liked;
-          console.log(data);
-          document.getElementsByTagName("h1")[0].innerHTML = data[0].Title;
-          document.getElementsByTagName("h3")[0].innerHTML = data[0].Appetizer;
-          document.getElementById("content-text").innerHTML = data[0].Content;
-          document.getElementById(
-            "likeBtn"
-          ).innerHTML = `Likes: ${data[0].Likes}`;
-          //Change the month to words
-          var Time = data[0].Time;
-          var month = Time.substring(5, 7);
-          parseInt(month);
-          var monthNames = [
-            "January",
-            "February",
-            "March",
-            "April",
-            "May",
-            "June",
-            "July",
-            "August",
-            "September",
-            "October",
-            "November",
-            "December",
-          ];
-          var monthName = monthNames[month - 1];
-          var Time =
-            monthName +
-            " " +
-            Time.substring(8, 10) +
-            ", " +
-            Time.substring(0, 4);
-          document.getElementById("date").innerHTML = Time;
-          HideLoadingScreen();
-        }
-        //Run a function on 404 error
-        else if (this.status == 404) {
-          document.getElementById("loadingText").innerHTML =
-            "404 Error: Page not found";
-        }
-      };
+      let Likes = document.getElementById("Likes").innerHTML;
+
+      document.getElementById("likeBtn").innerHTML = `Likes: ${Likes}`;
+      HideLoadingScreen();
       ArticleLikeTimeArray = [];
       function ArticleRateLimit(ArticleLikeTimeArray) {
         var time = new Date().getTime();
@@ -185,8 +136,9 @@
         }
       }
       function like(ArticleLikeTimeArray) {
-        if (likeValue == false && RateLimit(ArticleLikeTimeArray) == true) {
-          likeValue = true;
+        const RateLimit = ArticleRateLimit(ArticleLikeTimeArray);
+        if (likeValue === "false" && RateLimit == true) {
+          likeValue = "true";
           var http = new XMLHttpRequest();
           var currentUrl = window.location.href;
           var path = currentUrl.substring(currentUrl.lastIndexOf("/") + 1);
@@ -195,7 +147,7 @@
           http.onreadystatechange = function () {
             if (this.readyState == 4 && this.status == 204) {
               var likes = document.getElementById("likeBtn").innerHTML;
-              var likes = likes.substring(7, likes.length);
+              var likes = likes.split(" ")[1];
               var likes = parseInt(likes);
               likes++;
               document.getElementById("likeBtn").innerHTML = "Likes: " + likes;
@@ -206,11 +158,8 @@
               }
             }
           };
-        } else if (
-          likeValue == true &&
-          RateLimit(ArticleLikeTimeArray) == true
-        ) {
-          likeValue = false;
+        } else if (likeValue == "true" && RateLimit == true) {
+          likeValue = "false";
           //Send the like to the server
           var http = new XMLHttpRequest();
           var currentUrl = window.location.href;
@@ -221,40 +170,18 @@
           http.onreadystatechange = function () {
             if (this.readyState == 4 && this.status == 204) {
               var likes = document.getElementById("likeBtn").innerHTML;
-              var likes = likes.substring(7, likes.length);
+              var likes = likes.split(" ")[1];
               var likes = parseInt(likes);
               likes--;
               document.getElementById("likeBtn").innerHTML = "Likes: " + likes;
             } else if (this.status == 429) {
               var time = new Date().getTime();
-              for (var i = 0; i < 5; i++) {
+              for (var i = 0; i < 3; i++) {
                 ArticleLikeTimeArray.push(time + 60000);
               }
             }
           };
         }
-      }
-
-      //Counters for the ammount of characters in the fields
-      function NameCounter() {
-        var name = document.getElementById("name").value;
-        var nameLength = name.length;
-        if (nameLength > 16) {
-          document.getElementById("name").value = name.substring(0, 16);
-          var name = document.getElementById("name").value;
-          var nameLength = name.length;
-        }
-        document.getElementById("NameCounterOutput").innerHTML =
-          nameLength + "/16";
-      }
-      function EmailCounter() {
-        var email = document.getElementById("email").value;
-        var emailLength = email.length;
-        if (emailLength > 255) {
-          document.getElementById("email").value = email.substring(0, 255);
-        }
-        document.getElementById("EmailCounterOutput").innerHTML =
-          emailLength + "/255";
       }
       //Post comment to the server
       function addComment() {
@@ -298,13 +225,13 @@
         CommentLikeTimeArray.push(time);
         let count = 0;
         for (var i = 0; i < CommentLikeTimeArray.length; i++) {
-          if (CommentLikeTimeArray[i] > time - 10000) {
+          if (CommentLikeTimeArray[i] > time - 5000) {
             count++;
           } else {
             CommentLikeTimeArray.splice(i, 1);
           }
         }
-        if (count > 5) {
+        if (count > 10) {
           return false;
         } else {
           return true;
