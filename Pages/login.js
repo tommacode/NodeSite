@@ -30,4 +30,8 @@ fetch("/api/user")
       document.querySelector("head title").innerHTML =
         "Welcome,  " + data.Username;
     }
+    if (window.location.href.includes("/myAccount")) {
+      document.querySelector("header h1").innerHTML =
+        "Welcome,  " + data.Username;
+    }
   });

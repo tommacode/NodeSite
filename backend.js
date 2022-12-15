@@ -55,7 +55,7 @@ const pool = mysql
   })
   .promise();
 
-function Logs(req, StatusCode) {
+async function Logs(req, StatusCode) {
   const date = new Date();
   //Change date to datetime value
   const datetime = date.toISOString().slice(0, 19).replace("T", " ");
@@ -69,10 +69,24 @@ function Logs(req, StatusCode) {
   const method = req.method;
   //Get Path
   const path = req.path;
+  //Get Logged in user
+  const cookie = req.cookies["Auth"];
+  let User;
+  if (cookie != undefined) {
+    let sql = `SELECT UserID FROM Sessions WHERE Cookie = ?`;
+    const [UserID] = await pool.query(sql, [cookie]);
+    [User] = await pool.query("SELECT Username FROM Users WHERE ID = ?", [
+      UserID[0].UserID,
+    ]);
+    User = "User: " + User[0].Username;
+  } else {
+    User = "Not Logged In";
+  }
+
   console.log(
-    `${datetime} | ${ip} | ${forwardedfor} | ${useragent} | ${method} | ${path} | ${StatusCode}`
+    `${datetime} | ${ip} | ${forwardedfor} | ${useragent} | ${method} | ${path} | ${StatusCode} | ${User}`
   );
-  const sql = `INSERT INTO Logs (Time, ip, forwardedfor, useragent, method, path, statuscode) VALUES (?, ?, ?, ?, ?, ?, ?)`;
+  sql = `INSERT INTO Logs (Time, ip, forwardedfor, useragent, method, path, statuscode) VALUES (?, ?, ?, ?, ?, ?, ?)`;
   const values = [
     datetime,
     ip,
@@ -103,7 +117,7 @@ async function Authorised(cookie, pool) {
   }
 }
 
-async function GetUserID(cookie) {
+async function GetUserID(cookie, req) {
   if (cookie == undefined) {
     return null;
   }
@@ -111,6 +125,13 @@ async function GetUserID(cookie) {
     "SELECT UserID FROM Sessions WHERE cookie = ?",
     [cookie]
   );
+  //Update lastused time, UserAgentLastSeen, IPLastSeen
+  const date = new Date();
+  const sql = `UPDATE Sessions SET TimeLastUsed = ?, UserAgentLastSeen = ?, IPLastSeen = ? WHERE Cookie = ?`;
+  pool.query(sql, [date, req.headers["user-agent"], req.ip, cookie]);
+  if (result.length == 0) {
+    return null;
+  }
   return result[0].UserID;
 }
 
@@ -178,10 +199,25 @@ app.get("/Logout", (req, res) => {
 });
 
 app.get("/myAccount", async (req, res) => {
-  if (GetUserID(req.cookies.Auth) == null) {
+  let UserID = await GetUserID(req.cookies.Auth, req);
+  if (UserID == null) {
     res.redirect("/Login");
   } else {
-    res.sendFile(__dirname + "/Pages/myAccount.html");
+    let [Sessions] = await pool.query(
+      "SELECT ID,TimeCreated,TimeLastUsed,IPLastSeen,IPCreatedWith,UserAgentCreatedWith,UserAgentLastSeen FROM Sessions WHERE UserID = ? ORDER BY TimeLastUsed DESC",
+      [UserID]
+    );
+    const [CurrentSession] = await pool.query(
+      "SELECT ID FROM Sessions WHERE Cookie = ?",
+      [req.cookies.Auth]
+    );
+    //Add If the id of one of the sessions matches the current session then add a property called CurrentSession
+    Sessions.forEach((session) => {
+      if (session.ID == CurrentSession[0].ID) {
+        session.CurrentSession = "(Current Session)";
+      }
+    });
+    res.render(__dirname + "/Pages/myAccount", { Sessions: Sessions });
     Logs(req, 200);
   }
 });
@@ -207,7 +243,7 @@ app.get("/projects/*", async (req, res) => {
   const cookies = req.cookies;
   let sql = `SELECT ID,Time,Title,Appetizer,Content,Likes FROM Projects WHERE Title = ? AND Status = 1`;
   const [result] = await pool.query(sql, [project]);
-  const UserID = await GetUserID(cookies["Auth"]);
+  const UserID = await GetUserID(cookies["Auth"], req);
   sql = `SELECT count(*) FROM projectLikes WHERE UserID = ? AND Project = ?`;
   const [liked] = await pool.query(sql, [UserID, result[0].ID]);
   if (liked[0]["count(*)"] == 1) {
@@ -225,8 +261,8 @@ app.get("/projects/*", async (req, res) => {
     delete comment.UserID;
   }
   //If the user is logged in then check if they liked the comment
-  if ((await GetUserID(req.cookies["Auth"])) != null) {
-    const UserID = await GetUserID(req.cookies["Auth"]);
+  if ((await GetUserID(req.cookies["Auth"], req)) != null) {
+    const UserID = await GetUserID(req.cookies["Auth"], req);
     for (const comment of result) {
       sql = `SELECT count(*) FROM commentLikes WHERE UserID = ? AND Unique_id = ?`;
       const [liked] = await pool.query(sql, [UserID, comment.Unique_id]);
@@ -264,7 +300,7 @@ app.get("/photos/:photo", (req, res) => {
 
 //Likes
 app.get("/api/projects/:project/like", LikeLimit, async (req, res) => {
-  const UserID = await GetUserID(req.cookies["Auth"]);
+  const UserID = await GetUserID(req.cookies["Auth"], req);
   if (UserID != null) {
     let project = req.params.project;
     project = project.replaceAll("-", " ");
@@ -286,7 +322,7 @@ app.get("/api/projects/:project/like", LikeLimit, async (req, res) => {
 });
 
 app.get("/api/projects/:project/dislike", LikeLimit, async (req, res) => {
-  const UserID = await GetUserID(req.cookies["Auth"]);
+  const UserID = await GetUserID(req.cookies["Auth"], req);
   if (UserID != null) {
     let project = req.params.project;
     project = project.replaceAll("-", " ");
@@ -316,7 +352,7 @@ app.post("/api/projects/:project/comment", CommentLimit, async (req, res) => {
     Math.random().toString(36).substring(2, 15) +
     Math.random().toString(36).substring(2, 15);
 
-  const UserID = await GetUserID(req.cookies["Auth"]);
+  const UserID = await GetUserID(req.cookies["Auth"], req);
   const sql = `INSERT INTO Comments (Project,UserID,Content,Time,Likes,Unique_id) VALUES (?, ?, ?, ?, ?, ?)`;
   const values = [project, UserID, comment, datetime, 0, id];
   pool.query(sql, values);
@@ -338,8 +374,8 @@ app.get("/api/projects/:project/comments", async (req, res) => {
     delete comment.UserID;
   }
   //If the user is logged in then check if they liked the comment
-  if ((await GetUserID(req.cookies["Auth"])) != null) {
-    const UserID = await GetUserID(req.cookies["Auth"]);
+  if ((await GetUserID(req.cookies["Auth"], req)) != null) {
+    const UserID = await GetUserID(req.cookies["Auth"], req);
     for (const comment of result) {
       sql = `SELECT count(*) FROM commentLikes WHERE UserID = ? AND Unique_id = ?`;
       const [liked] = await pool.query(sql, [UserID, comment.Unique_id]);
@@ -356,7 +392,7 @@ app.get("/api/projects/:project/comments", async (req, res) => {
 
 //Comment likes
 app.get("/api/comments/:id/like", async (req, res) => {
-  const UserID = await GetUserID(req.cookies["Auth"]);
+  const UserID = await GetUserID(req.cookies["Auth"], req);
   if (UserID != null) {
     const id = req.params.id;
     let sql = `UPDATE Comments SET Likes = Likes + 1 WHERE unique_id = ?`;
@@ -369,7 +405,7 @@ app.get("/api/comments/:id/like", async (req, res) => {
 });
 
 app.get("/api/comments/:id/dislike", async (req, res) => {
-  const UserID = await GetUserID(req.cookies["Auth"]);
+  const UserID = await GetUserID(req.cookies["Auth"], req);
   if (UserID != null) {
     const id = req.params.id;
     let sql = `UPDATE Comments SET Likes = Likes - 1 WHERE unique_id = ?`;
@@ -549,8 +585,21 @@ app.post("/api/user/login", async (req, res) => {
       .createHash("sha256")
       .update(username + datetime + crypto.randomBytes(16).toString("hex"))
       .digest("hex");
-    sql = `INSERT INTO Sessions (Cookie, UserID) VALUES (?, ?)`;
-    await pool.query(sql, [cookie, result[0].ID]);
+    let IP = req.ip;
+    if (process.env.PROXIED == "true") {
+      IP = req.headers["x-forwarded-for"];
+    }
+
+    sql = `INSERT INTO Sessions (Cookie, UserID, TimeLastUsed,IPCreatedWith, IPLastSeen, UserAgentLastSeen, UserAgentCreatedWith) VALUES (?, ?, ?, ?, ?, ?, ?)`;
+    await pool.query(sql, [
+      cookie,
+      result[0].ID,
+      datetime,
+      IP,
+      IP,
+      req.headers["user-agent"],
+      req.headers["user-agent"],
+    ]);
     res.cookie("Auth", cookie);
     res.sendStatus(200);
     Logs(req, 200);
@@ -577,7 +626,7 @@ app.get("/api/user", async (req, res) => {
 
 app.get("/api/user/sessions", async (req, res) => {
   const cookie = req.cookies.Auth;
-  let UserID = await GetUserID(cookie);
+  let UserID = await GetUserID(cookie, req);
   if (UserID != null) {
     let sql = `SELECT TimeCreated,TimeLastUsed,IPCreatedWith,UserAgentCreatedWith,IPLastSeen,UserAgentLastSeen FROM Sessions WHERE UserID = ?`;
     [result] = await pool.query(sql, [UserID]);

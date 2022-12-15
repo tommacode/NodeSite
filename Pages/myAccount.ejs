@@ -55,6 +55,34 @@
       </div>
       <div class="borders">
         <h3>Sessions</h3>
+        <% for (i = 0; i < Sessions.length;i++) { %>
+        <div class="borders">
+          <h4>Session <%= i+1 %> <%= Sessions[i].CurrentSession %></h4>
+          <ul>
+            <li>
+              <strong>Time Created: </strong>
+              <%= Sessions[i].TimeCreated %>
+            </li>
+            <li>
+              <strong>Last Login: </strong><%= Sessions[i].TimeLastUsed %>
+            </li>
+            <li>
+              <strong>IP Created with: </strong><%= Sessions[i].IPCreatedWith %>
+            </li>
+            <li>
+              <strong>IP Last Seen: </strong><%= Sessions[i].IPLastSeen %>
+            </li>
+            <li>
+              <strong>User Agent Created with: </strong><%=
+              Sessions[i].UserAgentCreatedWith %>
+            </li>
+            <li>
+              <strong>User Agent Last seen: </strong><%=
+              Sessions[i].UserAgentLastSeen %>
+            </li>
+          </ul>
+        </div>
+        <% }; %>
       </div>
       <div id="footer">
         <h3>Footer</h3>
@@ -80,15 +108,5 @@
         </ul>
       </div>
     </div>
-    <script>
-      fetch("/api/user")
-        .then((res) => res.json())
-        .then((data) => {
-          if (data.Username) {
-            document.querySelector("header h1").innerHTML =
-              "Welcome, " + data.Username;
-          }
-        });
-    </script>
   </body>
 </html>

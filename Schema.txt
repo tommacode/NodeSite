@@ -6,7 +6,8 @@ create table Logs(
     UserAgent VARCHAR(255),
     Method VARCHAR(8),
     Path VARCHAR(255),
-    StatusCode INT
+    StatusCode INT,
+    Username VARCHAR(255)
 );
 
 create table Projects(
