@@ -78,8 +78,8 @@ async function Logs(req, StatusCode) {
   const cookie = req.cookies["Auth"];
   let Username;
   if (cookie != undefined) {
-    let sql = `SELECT Users.Username FROM Users,Sessions WHERE Sessions.UserID = Users.ID AND Sessions.Cookie = ?`
-    let [User] = await pool.query(sql, [cookie])
+    let sql = `SELECT Users.Username FROM Users,Sessions WHERE Sessions.UserID = Users.ID AND Sessions.Cookie = ?`;
+    let [User] = await pool.query(sql, [cookie]);
     Username = "User: " + User[0].Username;
   } else {
     Username = "Not Logged In";
@@ -163,7 +163,6 @@ app.get("/projects", (req, res) => {
   res.sendFile(path.join(__dirname, "Pages", "NavPage.html"));
   Logs(req, 200);
 });
-
 
 app.get("/createArticle", (req, res) => {
   res.sendFile(path.join(__dirname, "Pages", "createArticle.html"));
@@ -291,6 +290,7 @@ app.get("/photos/:photo", (req, res) => {
 });
 
 app.get("/api/projects/:project", async (req, res) => {
+  Logs(req, 200);
   let project = req.params.project;
   project = project.replaceAll("-", " ");
   const cookies = req.cookies;
@@ -305,7 +305,6 @@ app.get("/api/projects/:project", async (req, res) => {
     result[0].Liked = false;
   }
   res.send(result);
-  Logs(req, 200);
 });
 
 //Likes
@@ -317,7 +316,9 @@ app.get("/api/projects/:project/like", LikeLimit, async (req, res) => {
     //Check if user has already liked the project
     let sql = `SELECT count(*) FROM projectLikes WHERE UserID = ? AND Project = ?`;
     let [result] = await pool.query(sql, [UserID, req.params.project]);
-    if (result[0]["count(*)"] == 0) {//Checks if user has already liked the project
+    if (result[0]["count(*)"] == 0) {
+      Logs(req, 204);
+      //Checks if user has already liked the project
       let [ID] = await pool.query(`SELECT ID FROM Projects WHERE Title = ?`, [
         project,
       ]);
@@ -326,7 +327,6 @@ app.get("/api/projects/:project/like", LikeLimit, async (req, res) => {
       sql = `INSERT INTO projectLikes (Project, UserID) VALUES (?, ?)`;
       pool.query(sql, [ID[0].ID, UserID]);
       res.sendStatus(204);
-      Logs(req, 204);
     }
   }
 });
@@ -334,6 +334,7 @@ app.get("/api/projects/:project/like", LikeLimit, async (req, res) => {
 app.get("/api/projects/:project/dislike", LikeLimit, async (req, res) => {
   const UserID = await GetUserID(req.cookies["Auth"], req);
   if (UserID != null) {
+    Logs(req, 204);
     let project = req.params.project;
     project = project.replaceAll("-", " ");
     let [ID] = await pool.query(`SELECT ID FROM Projects WHERE Title = ?`, [
@@ -344,12 +345,12 @@ app.get("/api/projects/:project/dislike", LikeLimit, async (req, res) => {
     sql = `DELETE FROM projectLikes WHERE Project = ? AND UserID = ?`;
     pool.query(sql, [ID[0].ID, UserID]);
     res.sendStatus(204);
-    Logs(req, 204);
   }
 });
 
 //Comments
 app.post("/api/projects/:project/comment", CommentLimit, async (req, res) => {
+  Logs(req, 204);
   let project = req.params.project;
   project = project.replaceAll("-", " ");
   let comment = req.body.comment;
@@ -367,10 +368,10 @@ app.post("/api/projects/:project/comment", CommentLimit, async (req, res) => {
   const values = [project, UserID, comment, datetime, 0, id];
   pool.query(sql, values);
   res.sendStatus(204);
-  Logs(req, 204);
 });
 
 app.get("/api/projects/:project/comments", async (req, res) => {
+  Logs(req, 200);
   //Get the comments for the project
   let project = req.params.project;
   project = project.replaceAll("-", " ");
@@ -397,33 +398,32 @@ app.get("/api/projects/:project/comments", async (req, res) => {
     }
   }
   res.send(result);
-  Logs(req, 200);
 });
 
 //Comment likes
 app.get("/api/comments/:id/like", async (req, res) => {
   const UserID = await GetUserID(req.cookies["Auth"], req);
   if (UserID != null) {
+    Logs(req, 204);
     const id = req.params.id;
     let sql = `UPDATE Comments SET Likes = Likes + 1 WHERE unique_id = ?`;
     pool.query(sql, [id]);
     sql = `INSERT INTO commentLikes (Unique_id, UserID) VALUES (?, ?)`;
     pool.query(sql, [id, UserID]);
     res.sendStatus(204);
-    Logs(req, 204);
   }
 });
 
 app.get("/api/comments/:id/dislike", async (req, res) => {
   const UserID = await GetUserID(req.cookies["Auth"], req);
   if (UserID != null) {
+    Logs(req, 204);
     const id = req.params.id;
     let sql = `UPDATE Comments SET Likes = Likes - 1 WHERE unique_id = ?`;
     pool.query(sql, [id]);
     sql = `DELETE FROM commentLikes WHERE unique_id = ? AND UserID  = ?`;
     pool.query(sql, [id, UserID]);
     res.sendStatus(204);
-    Logs(req, 204);
   }
 });
 
@@ -443,6 +443,7 @@ app.post("/api/projects/new", async (req, res) => {
   tags = tags.replaceAll('"', '""');
 
   if (await Authorised(password, pool)) {
+    Logs(req, 200);
     //Send Email With sendgrid
     const msg = {
       to: process.env.EMAIL,
@@ -467,7 +468,6 @@ app.post("/api/projects/new", async (req, res) => {
           `Successfully added project the visibility is set to ${Status}`
         );
       });
-    Logs(req, 200);
   } else {
     res.sendStatus(401);
     Logs(req, 401);
@@ -478,6 +478,7 @@ app.post("/api/projects/:id/edit", async (req, res) => {
   const password = req.cookies.Auth;
 
   if (await Authorised(password, pool)) {
+    Logs(req, 200);
     let id = req.params.id;
     let title = req.body.title;
     let appetizer = req.body.appetizer;
@@ -546,11 +547,11 @@ app.post("/api/projects/:project/visibility", (req, res) => {
   project = project.replaceAll("-", " ");
   const cookies = req.cookies;
   if (Authorised(cookies["Auth"], pool)) {
+    Logs(req, 204);
     //use mysql if statement if status = 1 then set to 0 else set to 1
     let sql = `UPDATE Projects SET Status = IF(Status = 1, 0, 1) WHERE title = ?`;
     pool.query(sql, [project]);
     res.sendStatus(204);
-    Logs(req, 204);
   }
 });
 
@@ -562,7 +563,9 @@ app.post("/api/user/create", async (req, res) => {
   //Check for the username existing
   let sql = "SELECT count(*) FROM Users WHERE Username = ?";
   const [result] = await pool.query(sql, [username]);
-  if (result[0]["count(*)"] == 0) {//check if username exists
+  if (result[0]["count(*)"] == 0) {
+    Logs(req, 200);
+    //check if username exists
     const passwordHash = crypto
       .createHash("sha256")
       .update(password)
@@ -570,7 +573,6 @@ app.post("/api/user/create", async (req, res) => {
     sql = `INSERT INTO Users (Username, Password, Email) VALUES (?, ?, ?)`;
     pool.query(sql, [username, passwordHash, email]);
     res.sendStatus(200);
-    Logs(req, 200);
   } else {
     res.sendStatus(409);
     Logs(req, 409);
@@ -587,6 +589,7 @@ app.post("/api/user/login", async (req, res) => {
   let sql = `SELECT * FROM Users WHERE Username = ? AND Password = ?`;
   const [result] = await pool.query(sql, [username, passwordHash]);
   if (result.length == 1) {
+    Logs(req, 200);
     //Make a cookie with the username current time and a random number
     const date = new Date();
     const datetime = date.toISOString().slice(0, 19).replace("T", " ");
@@ -611,7 +614,6 @@ app.post("/api/user/login", async (req, res) => {
     ]);
     res.cookie("Auth", cookie);
     res.sendStatus(200);
-    Logs(req, 200);
   } else {
     res.sendStatus(403);
     Logs(req, 403);
@@ -623,10 +625,10 @@ app.get("/api/user", async (req, res) => {
   let sql = `SELECT * FROM Sessions WHERE Cookie = ?`;
   let [result] = await pool.query(sql, [cookie]);
   if (result.length == 1) {
+    Logs(req, 200);
     sql = `SELECT Username,Sudo FROM Users WHERE id = ?`;
     [result] = await pool.query(sql, [result[0].UserID]);
     res.send(result[0]);
-    Logs(req, 200);
   } else {
     res.sendStatus(204);
     Logs(req, 204);
@@ -637,10 +639,10 @@ app.get("/api/user/sessions", async (req, res) => {
   const cookie = req.cookies.Auth;
   let UserID = await GetUserID(cookie, req);
   if (UserID != null) {
+    Logs(req, 200);
     let sql = `SELECT TimeCreated,TimeLastUsed,IPCreatedWith,UserAgentCreatedWith,IPLastSeen,UserAgentLastSeen FROM Sessions WHERE UserID = ?`;
     const [result] = await pool.query(sql, [UserID]);
     res.send(result);
-    Logs(req, 200);
   }
 });
 
