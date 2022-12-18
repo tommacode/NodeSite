@@ -62,7 +62,12 @@ async function Logs(req, StatusCode) {
   //Get IP
   const ip = req.ip;
   //Get Forwarded for
-  let forwardedfor = req.headers["x-forwarded-for"];
+  let forwardedfor;
+  if (req.headers["x-forwarded-for"] != undefined) {
+    forwardedfor = req.headers["x-forwarded-for"];
+  } else {
+    forwardedfor = ip;
+  }
   //Get User Agent
   const useragent = req.headers["user-agent"];
   //Get Method
@@ -71,20 +76,17 @@ async function Logs(req, StatusCode) {
   const path = req.path;
   //Get Logged in user
   const cookie = req.cookies["Auth"];
-  let User;
+  let Username;
   if (cookie != undefined) {
-    let sql = `SELECT UserID FROM Sessions WHERE Cookie = ?`;
-    const [UserID] = await pool.query(sql, [cookie]);
-    [User] = await pool.query("SELECT Username FROM Users WHERE ID = ?", [
-      UserID[0].UserID,
-    ]);
-    User = "User: " + User[0].Username;
+    let sql = `SELECT Users.Username FROM Users,Sessions WHERE Sessions.UserID = Users.ID AND Sessions.Cookie = ?`
+    let [User] = await pool.query(sql, [cookie])
+    Username = "User: " + User[0].Username;
   } else {
-    User = "Not Logged In";
+    Username = "Not Logged In";
   }
 
   console.log(
-    `${datetime} | ${ip} | ${forwardedfor} | ${useragent} | ${method} | ${path} | ${StatusCode} | ${User}`
+    `${datetime} | ${ip} | ${forwardedfor} | ${useragent} | ${method} | ${path} | ${StatusCode} | ${Username}`
   );
   sql = `INSERT INTO Logs (Time, ip, forwardedfor, useragent, method, path, statuscode) VALUES (?, ?, ?, ?, ?, ?, ?)`;
   const values = [
@@ -103,6 +105,7 @@ async function Authorised(cookie, pool) {
   if (cookie == undefined) {
     return false;
   }
+  // sql = `
   let sql = `SELECT UserID FROM Sessions WHERE Cookie = ?`;
   let [result] = await pool.query(sql, [cookie]);
   if (result.length == 0) {
@@ -161,11 +164,6 @@ app.get("/projects", (req, res) => {
   Logs(req, 200);
 });
 
-//app.get("/projects/*", (req, res) => {
-//  //Check if project exists if it doesn't then redirect back to the nav page
-//  res.sendFile(__dirname + "/Pages/article.html");
-//  Logs(req, 200);
-//});
 
 app.get("/createArticle", (req, res) => {
   res.sendFile(path.join(__dirname, "Pages", "createArticle.html"));
@@ -251,15 +249,9 @@ app.get("/projects/*", async (req, res) => {
   } else {
     result[0].Liked = false;
   }
-  sql = `SELECT UserID,Content,Likes,Unique_id FROM Comments Where Project = ? ORDER BY FIELD(Unique_id, ?) DESC, Likes DESC`;
+  sql = `SELECT Users.Username,Comments.Content,Comments.Likes,Comments.Unique_id FROM Comments,Users WHERE Comments.UserID=Users.ID AND Project = ? ORDER BY FIELD(Unique_id, ?) DESC, Likes DESC`;
   let [comments] = await pool.query(sql, [project, req.cookies.comment]);
-  //Convert the UserID to the username
-  for (const comment of comments) {
-    sql = `SELECT Username FROM Users WHERE ID = ?`;
-    const [user] = await pool.query(sql, [comment.UserID]);
-    comment.Name = user[0].Username;
-    delete comment.UserID;
-  }
+
   //If the user is logged in then check if they liked the comment
   if ((await GetUserID(req.cookies["Auth"], req)) != null) {
     const UserID = await GetUserID(req.cookies["Auth"], req);
@@ -298,6 +290,24 @@ app.get("/photos/:photo", (req, res) => {
   Logs(req, 200);
 });
 
+app.get("/api/projects/:project", async (req, res) => {
+  let project = req.params.project;
+  project = project.replaceAll("-", " ");
+  const cookies = req.cookies;
+  let sql = `SELECT ID,Time,Title,Appetizer,Content,Likes FROM Projects WHERE Title = ? AND Status = 1`;
+  const [result] = await pool.query(sql, [project]);
+  const UserID = await GetUserID(cookies["Auth"], req);
+  sql = `SELECT count(*) FROM projectLikes WHERE UserID = ? AND Project = ?`;
+  const [liked] = await pool.query(sql, [UserID, result[0].ID]);
+  if (liked[0]["count(*)"] == 1) {
+    result[0].Liked = true;
+  } else {
+    result[0].Liked = false;
+  }
+  res.send(result);
+  Logs(req, 200);
+});
+
 //Likes
 app.get("/api/projects/:project/like", LikeLimit, async (req, res) => {
   const UserID = await GetUserID(req.cookies["Auth"], req);
@@ -307,14 +317,14 @@ app.get("/api/projects/:project/like", LikeLimit, async (req, res) => {
     //Check if user has already liked the project
     let sql = `SELECT count(*) FROM projectLikes WHERE UserID = ? AND Project = ?`;
     let [result] = await pool.query(sql, [UserID, req.params.project]);
-    if (result[0]["count(*)"] == 0) {
-      [result] = await pool.query(`SELECT ID FROM Projects WHERE Title = ?`, [
+    if (result[0]["count(*)"] == 0) {//Checks if user has already liked the project
+      let [ID] = await pool.query(`SELECT ID FROM Projects WHERE Title = ?`, [
         project,
       ]);
       sql = `UPDATE Projects SET Likes = Likes + 1 WHERE Title = "${project}"`;
       pool.query(sql);
       sql = `INSERT INTO projectLikes (Project, UserID) VALUES (?, ?)`;
-      pool.query(sql, [result[0].ID, UserID]);
+      pool.query(sql, [ID[0].ID, UserID]);
       res.sendStatus(204);
       Logs(req, 204);
     }
@@ -326,13 +336,13 @@ app.get("/api/projects/:project/dislike", LikeLimit, async (req, res) => {
   if (UserID != null) {
     let project = req.params.project;
     project = project.replaceAll("-", " ");
-    [result] = await pool.query(`SELECT ID FROM Projects WHERE Title = ?`, [
+    let [ID] = await pool.query(`SELECT ID FROM Projects WHERE Title = ?`, [
       project,
     ]);
     sql = `UPDATE Projects SET Likes = Likes - 1 WHERE Title = "${project}"`;
     pool.query(sql);
     sql = `DELETE FROM projectLikes WHERE Project = ? AND UserID = ?`;
-    pool.query(sql, [result[0].ID, UserID]);
+    pool.query(sql, [ID[0].ID, UserID]);
     res.sendStatus(204);
     Logs(req, 204);
   }
@@ -552,8 +562,7 @@ app.post("/api/user/create", async (req, res) => {
   //Check for the username existing
   let sql = "SELECT count(*) FROM Users WHERE Username = ?";
   const [result] = await pool.query(sql, [username]);
-  //Create hash with crypto sha256
-  if (result[0]["count(*)"] == 0) {
+  if (result[0]["count(*)"] == 0) {//check if username exists
     const passwordHash = crypto
       .createHash("sha256")
       .update(password)
@@ -629,7 +638,7 @@ app.get("/api/user/sessions", async (req, res) => {
   let UserID = await GetUserID(cookie, req);
   if (UserID != null) {
     let sql = `SELECT TimeCreated,TimeLastUsed,IPCreatedWith,UserAgentCreatedWith,IPLastSeen,UserAgentLastSeen FROM Sessions WHERE UserID = ?`;
-    [result] = await pool.query(sql, [UserID]);
+    const [result] = await pool.query(sql, [UserID]);
     res.send(result);
     Logs(req, 200);
   }
