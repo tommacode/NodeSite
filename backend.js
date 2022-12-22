@@ -24,6 +24,7 @@ if (process.env.PROXIED == "true") {
 const crypto = require("crypto");
 
 const cookies = require("cookie-parser");
+const e = require("express");
 app.use(cookies());
 
 //EJS
@@ -80,7 +81,11 @@ async function Logs(req, StatusCode) {
   if (cookie != undefined) {
     let sql = `SELECT Users.Username FROM Users,Sessions WHERE Sessions.UserID = Users.ID AND Sessions.Cookie = ?`;
     let [User] = await pool.query(sql, [cookie]);
-    Username = "User: " + User[0].Username;
+    if (User.length == 0) {
+      Username = "Not Logged In";
+    } else {
+      Username = `User: ${User[0].Username}`;
+    }
   } else {
     Username = "Not Logged In";
   }
@@ -131,7 +136,8 @@ async function GetUserID(cookie, req) {
   //Update lastused time, UserAgentLastSeen, IPLastSeen
   const date = new Date();
   const sql = `UPDATE Sessions SET TimeLastUsed = ?, UserAgentLastSeen = ?, IPLastSeen = ? WHERE Cookie = ?`;
-  pool.query(sql, [date, req.headers["user-agent"], req.ip, cookie]);
+  await pool.query(sql, [date, req.headers["user-agent"], req.ip, cookie]);
+
   if (result.length == 0) {
     return null;
   }
@@ -213,6 +219,22 @@ app.get("/myAccount", async (req, res) => {
       if (session.ID == CurrentSession[0].ID) {
         session.CurrentSession = "(Current Session)";
       }
+      session.TimeCreated = session.TimeCreated.toLocaleString("en-GB", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+      });
+      session.TimeLastUsed = session.TimeCreated.toLocaleString("en-GB", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+      });
     });
     res.render(__dirname + "/Pages/myAccount", { Sessions: Sessions });
     Logs(req, 200);
@@ -240,6 +262,11 @@ app.get("/projects/*", async (req, res) => {
   const cookies = req.cookies;
   let sql = `SELECT ID,Time,Title,Appetizer,Content,Likes FROM Projects WHERE Title = ? AND Status = 1`;
   const [result] = await pool.query(sql, [project]);
+  if (result.length == 0) {
+    res.sendFile(__dirname + "/Pages/404.html");
+    Logs(req, 404);
+    return;
+  }
   const UserID = await GetUserID(cookies["Auth"], req);
   sql = `SELECT count(*) FROM projectLikes WHERE UserID = ? AND Project = ?`;
   const [liked] = await pool.query(sql, [UserID, result[0].ID]);
@@ -264,13 +291,18 @@ app.get("/projects/*", async (req, res) => {
       }
     }
   }
-  //Change the date to a more readable format
-  result[0].Time = result[0].Time.toLocaleDateString("en-GB");
+  date = new Date(result[0].Time);
+  date = date.toLocaleString("en-GB", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+
   res.render(__dirname + "/Pages/article.ejs", {
     Title: result[0].Title,
     Content: result[0].Content,
     Appetizer: result[0].Appetizer,
-    Time: result[0].Time,
+    Time: date,
     Likes: result[0].Likes,
     Liked: result[0].Liked,
     Comments: comments,
@@ -309,48 +341,67 @@ app.get("/api/projects/:project", async (req, res) => {
 
 //Likes
 app.get("/api/projects/:project/like", LikeLimit, async (req, res) => {
-  const UserID = await GetUserID(req.cookies["Auth"], req);
-  if (UserID != null) {
-    let project = req.params.project;
-    project = project.replaceAll("-", " ");
-    //Check if user has already liked the project
-    let sql = `SELECT count(*) FROM projectLikes WHERE UserID = ? AND Project = ?`;
-    let [result] = await pool.query(sql, [UserID, req.params.project]);
-    if (result[0]["count(*)"] == 0) {
-      Logs(req, 204);
-      //Checks if user has already liked the project
-      let [ID] = await pool.query(`SELECT ID FROM Projects WHERE Title = ?`, [
-        project,
-      ]);
-      sql = `UPDATE Projects SET Likes = Likes + 1 WHERE Title = "${project}"`;
-      pool.query(sql);
-      sql = `INSERT INTO projectLikes (Project, UserID) VALUES (?, ?)`;
-      pool.query(sql, [ID[0].ID, UserID]);
-      res.sendStatus(204);
-    }
+  //Check to see if the request can be dropped
+  if (
+    req.params.project == "" ||
+    req.params.project == null ||
+    req.params.project == undefined
+  ) {
+    res.sendStatus(400);
+    Logs(req, 400);
+    return;
   }
-});
-
-app.get("/api/projects/:project/dislike", LikeLimit, async (req, res) => {
-  const UserID = await GetUserID(req.cookies["Auth"], req);
-  if (UserID != null) {
-    Logs(req, 204);
-    let project = req.params.project;
-    project = project.replaceAll("-", " ");
-    let [ID] = await pool.query(`SELECT ID FROM Projects WHERE Title = ?`, [
-      project,
-    ]);
-    sql = `UPDATE Projects SET Likes = Likes - 1 WHERE Title = "${project}"`;
-    pool.query(sql);
-    sql = `DELETE FROM projectLikes WHERE Project = ? AND UserID = ?`;
-    pool.query(sql, [ID[0].ID, UserID]);
-    res.sendStatus(204);
+  let project = req.params.project;
+  project = project.replaceAll("-", " ");
+  let UserID = await GetUserID(req.cookies["Auth"], req);
+  //Get the project ID
+  let sql = `SELECT ID FROM Projects WHERE Title = ?`;
+  const [result] = await pool.query(sql, [project]);
+  if (result.length == 0) {
+    res.sendStatus(404);
+    Logs(req, 404);
+    return;
+  }
+  //Check to see if the user has liked the project
+  sql = `SELECT count(*) FROM projectLikes WHERE UserID = ? AND Project = ?`;
+  const [liked] = await pool.query(sql, [UserID, result[0].ID]);
+  if (liked[0]["count(*)"] > 0) {
+    //Remove the like
+    sql = `DELETE FROM projectLikes WHERE UserID = ? AND Project = ?`;
+    await pool.query(sql, [UserID, result[0].ID]);
+    //Remove the like from the project
+    sql = `UPDATE Projects SET Likes = Likes - 1 WHERE ID = ?`;
+    await pool.query(sql, [result[0].ID]);
+    res.send({ Status: "Removed" });
+    Logs(req, 200);
+  }
+  if (liked[0]["count(*)"] < 1) {
+    //Add the like
+    sql = `INSERT INTO projectLikes (UserID,Project) VALUES (?,?)`;
+    await pool.query(sql, [UserID, result[0].ID]);
+    //Add the like to the project
+    sql = `UPDATE Projects SET Likes = Likes + 1 WHERE ID = ?`;
+    await pool.query(sql, [result[0].ID]);
+    res.send({ Status: "Added" });
+    Logs(req, 200);
   }
 });
 
 //Comments
 app.post("/api/projects/:project/comment", CommentLimit, async (req, res) => {
   Logs(req, 204);
+  if (req.body.comment == "" || req.params.project == "") {
+    res.sendStatus(400);
+    return;
+  }
+  if (req.body.comment == null || req.params.project == null) {
+    res.sendStatus(400);
+    return;
+  }
+  if (req.body.comment == undefined || req.params.project == undefined) {
+    res.sendStatus(400);
+    return;
+  }
   let project = req.params.project;
   project = project.replaceAll("-", " ");
   let comment = req.body.comment;
@@ -364,6 +415,18 @@ app.post("/api/projects/:project/comment", CommentLimit, async (req, res) => {
     Math.random().toString(36).substring(2, 15);
 
   const UserID = await GetUserID(req.cookies["Auth"], req);
+  if (UserID == null) {
+    res.sendStatus(401);
+    return;
+  }
+  if (UserID == undefined) {
+    res.sendStatus(401);
+    return;
+  }
+  if (UserID.length == 0) {
+    res.sendStatus(401);
+    return;
+  }
   const sql = `INSERT INTO Comments (Project,UserID,Content,Time,Likes,Unique_id) VALUES (?, ?, ?, ?, ?, ?)`;
   const values = [project, UserID, comment, datetime, 0, id];
   pool.query(sql, values);
@@ -402,28 +465,49 @@ app.get("/api/projects/:project/comments", async (req, res) => {
 
 //Comment likes
 app.get("/api/comments/:id/like", async (req, res) => {
-  const UserID = await GetUserID(req.cookies["Auth"], req);
-  if (UserID != null) {
-    Logs(req, 204);
-    const id = req.params.id;
-    let sql = `UPDATE Comments SET Likes = Likes + 1 WHERE unique_id = ?`;
-    pool.query(sql, [id]);
-    sql = `INSERT INTO commentLikes (Unique_id, UserID) VALUES (?, ?)`;
-    pool.query(sql, [id, UserID]);
-    res.sendStatus(204);
+  //Check to see if the request can be dropped
+  if (
+    req.params.id == "" ||
+    req.params.id == null ||
+    req.params.id == undefined
+  ) {
+    res.sendStatus(400);
+    Logs(req, 400);
+    return;
   }
-});
-
-app.get("/api/comments/:id/dislike", async (req, res) => {
-  const UserID = await GetUserID(req.cookies["Auth"], req);
-  if (UserID != null) {
-    Logs(req, 204);
-    const id = req.params.id;
-    let sql = `UPDATE Comments SET Likes = Likes - 1 WHERE unique_id = ?`;
-    pool.query(sql, [id]);
-    sql = `DELETE FROM commentLikes WHERE unique_id = ? AND UserID  = ?`;
-    pool.query(sql, [id, UserID]);
-    res.sendStatus(204);
+  let id = req.params.id;
+  id = id.replaceAll("-", " ");
+  let UserID = await GetUserID(req.cookies["Auth"], req);
+  //Check to see if the user has liked the project
+  sql = `SELECT count(*) FROM commentLikes WHERE UserID = ? AND Unique_id = ?`;
+  const [liked] = await pool.query(sql, [UserID, id]);
+  if (liked[0]["count(*)"] > 0) {
+    //Remove the like
+    sql = `DELETE FROM commentLikes WHERE UserID = ? AND Unique_id = ?`;
+    await pool.query(sql, [UserID, id]);
+    //remove likes from the comment
+    sql = `UPDATE Comments SET Likes = Likes - 1 WHERE Unique_id = ?`;
+    await pool.query(sql, [id]);
+    let [count] = await pool.query(
+      "SELECT count(*) FROM commentLikes WHERE Unique_id = ?",
+      [id]
+    );
+    res.send({ Status: count[0]["count(*)"] });
+    Logs(req, 200);
+  }
+  if (liked[0]["count(*)"] < 1) {
+    //Add the like
+    sql = `INSERT INTO commentLikes (UserID,Unique_id) VALUES (?,?)`;
+    await pool.query(sql, [UserID, id]);
+    //Add likes to the comment
+    sql = `UPDATE Comments SET Likes = Likes + 1 WHERE Unique_id = ?`;
+    await pool.query(sql, [id]);
+    let [count] = await pool.query(
+      "SELECT count(*) FROM commentLikes WHERE Unique_id = ?",
+      [id]
+    );
+    res.send({ Status: count[0]["count(*)"] });
+    Logs(req, 200);
   }
 });
 
@@ -649,3 +733,8 @@ app.get("/api/user/sessions", async (req, res) => {
 app.listen(process.env.PORT, () => {
   console.log(`Server is running on http://localhost:${process.env.PORT}`);
 });
+
+//Make request to the like api
+// This request will then be checked to see if the user has already liked the project
+// If it has then it will remove the like and send back a different response code to if it hasnt liked it
+// Meaning likes work as a toggle. This will work for ssr as the liked status doesn't need to be sent to the client

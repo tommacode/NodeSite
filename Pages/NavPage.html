@@ -51,7 +51,12 @@
       <!--Search-->
       <div class="borders">
         <h3>Search</h3>
-        <input type="text" id="searchBar" placeholder="Search..." />
+        <input
+          oninput="Search()"
+          type="text"
+          id="searchBar"
+          placeholder="Search..."
+        />
         <button id="searchBtn" class="clearBtn" onclick="Search()">
           Search
         </button>

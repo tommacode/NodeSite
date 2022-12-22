@@ -74,10 +74,23 @@
         </form>
         <p id="response"></p>
       </div>
-      <div id="comments">
+      <div id="comments" class="borders">
         <h3 id="commentTitle">Comments</h3>
         <!--Use ejs to render the comments the same as the javascript would-->
-        <div id="commentList"></div>
+        <div id="commentList">
+          <% for (var i = 0; i < Comments.length; i++) { %>
+          <div class="borders">
+            <h4><%= Comments[i].Username %></h4>
+            <p><%= Comments[i].Content %></p>
+            <button
+              id="<%= Comments[i].Unique_id %>"
+              onclick="LikeComment('<%= Comments[i].Unique_id %>')"
+            >
+              Likes: <%= Comments[i].Likes %>
+            </button>
+          </div>
+          <% } %>
+        </div>
       </div>
       <div id="footer">
         <h3>Footer</h3>
@@ -137,47 +150,29 @@
       }
       function like(ArticleLikeTimeArray) {
         const RateLimit = ArticleRateLimit(ArticleLikeTimeArray);
-        if (likeValue === "false" && RateLimit == true) {
-          likeValue = "true";
-          var http = new XMLHttpRequest();
-          var currentUrl = window.location.href;
-          var path = currentUrl.substring(currentUrl.lastIndexOf("/") + 1);
-          http.open("GET", `/api/projects/${path}/like`, true);
-          http.send();
-          http.onreadystatechange = function () {
-            if (this.readyState == 4 && this.status == 204) {
-              var likes = document.getElementById("likeBtn").innerHTML;
-              var likes = likes.split(" ")[1];
-              var likes = parseInt(likes);
-              likes++;
-              document.getElementById("likeBtn").innerHTML = "Likes: " + likes;
-            } else if (this.status == 429) {
-              var time = new Date().getTime();
-              for (var i = 0; i < 5; i++) {
-                ArticleLikeTimeArray.push(time + 60000);
-              }
-            }
-          };
-        } else if (likeValue == "true" && RateLimit == true) {
-          likeValue = "false";
-          //Send the like to the server
+        if (RateLimit == true) {
+          //Send http request to the server
           var http = new XMLHttpRequest();
           var currentUrl = window.location.href;
           //extract path from the url
           var path = currentUrl.substring(currentUrl.lastIndexOf("/") + 1);
-          http.open("GET", `/api/projects/${path}/dislike`, true);
+          http.open("GET", `/api/projects/${path}/like`, true);
           http.send();
           http.onreadystatechange = function () {
-            if (this.readyState == 4 && this.status == 204) {
-              var likes = document.getElementById("likeBtn").innerHTML;
-              var likes = likes.split(" ")[1];
-              var likes = parseInt(likes);
-              likes--;
-              document.getElementById("likeBtn").innerHTML = "Likes: " + likes;
-            } else if (this.status == 429) {
-              var time = new Date().getTime();
-              for (var i = 0; i < 3; i++) {
-                ArticleLikeTimeArray.push(time + 60000);
+            if (this.readyState == 4 && this.status == 200) {
+              let response = JSON.parse(this.responseText);
+              if (response.Status == "Added") {
+                //Add one to the like value
+                Likes++;
+                document.getElementById(
+                  "likeBtn"
+                ).innerHTML = `Likes: ${Likes}`;
+              } else if (response.Status == "Removed") {
+                //Remove one from the like value
+                Likes--;
+                document.getElementById(
+                  "likeBtn"
+                ).innerHTML = `Likes: ${Likes}`;
               }
             }
           };
@@ -218,6 +213,7 @@
           }, 2000);
         };
       }
+
       //Load comments
       CommentLikeTimeArray = [];
       function CommentLikeRateLimit(CommentLikeTimeArray) {
@@ -237,85 +233,21 @@
           return true;
         }
       }
-      function LoadComments() {
-        //Clear the comments
-        document.getElementById("comments").innerHTML = "";
-        var http = new XMLHttpRequest();
-        var currentUrl = window.location.href;
-        //extract path from the url
-        var path = currentUrl.substring(currentUrl.lastIndexOf("/") + 1);
-        http.open("GET", `/api/projects/${path}/comments`, true);
-        http.send();
-        http.onreadystatechange = function () {
-          if (this.readyState == 4 && this.status == 200) {
-            var data = JSON.parse(this.responseText);
-            LikedComment = [];
-            var h3 = document.createElement("h3");
-            h3.innerHTML = `Comments (${data.length})`;
-            document.getElementById("comments").appendChild(h3);
-            for (var i = 0; i < data.length; i++) {
-              var comment = document.createElement("div");
-              comment.className = "borders";
-              var name = document.createElement("h4");
-              name.innerHTML = data[i].Name;
-              var commentText = document.createElement("p");
-              commentText.innerHTML = data[i].Content;
-              //Add a like button to the comment
-              var likeBtn = document.createElement("button");
-              likeBtn.id = data[i].unique_id;
-              likeBtn.className = "likeBtn";
-              likeBtn.innerHTML = "Likes: " + data[i].Likes;
-              likeBtn.id = data[i].Unique_id;
-              LikedComment.push(likeBtn.id + ": 0");
-              if (data[i].Liked == true) {
-                LikedComment[likeBtn.id] = 1;
-              }
-              likeBtn.onclick = function () {
-                let Limit = CommentLikeRateLimit(CommentLikeTimeArray);
-                if (
-                  LikedComment[this.id] == 0 ||
-                  (LikedComment[this.id] == undefined && Limit == true)
-                ) {
-                  LikedComment[this.id] = 1;
-                  var likes = this.innerHTML;
-                  var likes = likes.substring(7, likes.length);
-                  var likes = parseInt(likes);
-                  likes++;
-                  this.innerHTML = "Likes: " + likes;
-                  var http = new XMLHttpRequest();
-                  var currentUrl = window.location.href;
-                  //extract path from the url
-                  var path = currentUrl.substring(
-                    currentUrl.lastIndexOf("/") + 1
-                  );
-                  http.open("GET", `/api/comments/${this.id}/like`, true);
-                  http.send();
-                } else if (Limit == true) {
-                  LikedComment[this.id] = 0;
-                  var likes = this.innerHTML;
-                  var likes = likes.substring(7, likes.length);
-                  var likes = parseInt(likes);
-                  likes--;
-                  this.innerHTML = "Likes: " + likes;
-                  var http = new XMLHttpRequest();
-                  var currentUrl = window.location.href;
-                  //extract path from the url
-                  var path = currentUrl.substring(
-                    currentUrl.lastIndexOf("/") + 1
-                  );
-                  http.open("GET", `/api/comments/${this.id}/dislike`, true);
-                  http.send();
-                }
-              };
-              //Add the comment to the page
-              comment.appendChild(name);
-              comment.appendChild(commentText);
-              comment.appendChild(likeBtn);
-              document.getElementById("comments").appendChild(comment);
+      function LikeComment(id) {
+        let Limit = CommentLikeRateLimit(CommentLikeTimeArray);
+        if (Limit == true) {
+          //Send Http request
+          var http = new XMLHttpRequest();
+          http.open("GET", `/api/comments/${id}/like`, true);
+          http.send();
+          http.onreadystatechange = function () {
+            if (this.readyState == 4 && this.status == 200) {
+              let response = JSON.parse(this.responseText);
+              document.getElementById(id).innerHTML =
+                "Likes: " + response.Status;
             }
-          }
-          document.getElementById("comments").className = "borders";
-        };
+          };
+        }
       }
     </script>
   </body>

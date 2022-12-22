@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@200;400;600&display=swap"
+      rel="stylesheet"
+    />
+    <script src="/login.js"></script>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Home Page</title>
+    <!--Meta Tags-->
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:domain" content="tomblake.me" />
+    <meta
+      name="twitter:title"
+      property="og:title"
+      itemprop="name"
+      content="Page Not Found"
+    />
+    <meta
+      name="twitter:description"
+      property="og:description"
+      itemprop="description"
+      content="Page Not Found"
+    />
+    <link rel="stylesheet" href="../css.css" />
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+  </head>
+  <body>
+    <div></div>
+    <div id="frosted">
+      <nav>
+        <a href="/login" class="listLink" style="font-size: 1rem" id="loginInfo"
+          >Not logged in</a
+        >
+        <ul>
+          <li><a class="listLink" href="/">Home</a></li>
+          <li><a class="listLink" href="/projects">Articles</a></li>
+        </ul>
+      </nav>
+      <!--Big header to draw attention-->
+      <header>
+        <h1>[404] Oops....</h1>
+        <h3>Seems You have tried to access a page that doesn't exist</h3>
+      </header>
+      <button id="reset1" class="clearBtn" onclick="ResetAll()">
+        Reset All
+      </button>
+      <div class="borders">
+        <h3>What Happened?</h3>
+        <p>
+          This page is shown when you try to access a page that doesn't exist.
+          Check the URL and try again.
+        </p>
+      </div>
+
+      <div id="footer">
+        <h3>Footer</h3>
+        <!--Links-->
+        <ul class="linkBar">
+          <li>
+            <a
+              target="_blank"
+              href="https://github.com/tommacode"
+              class="listLink"
+              >My Github</a
+            >
+          </li>
+          <li>
+            <a
+              target="_blank"
+              href="https://tomhasawebsite.com"
+              class="listLink"
+              >Other Website</a
+            >
+          </li>
+          <li><a href="#" class="listLink">Back to the top!</a></li>
+        </ul>
+      </div>
+    </div>
+    <script>
+      //Make the skills expandable
+      const onClick = function () {
+        var elementID = this.id;
+        var formulatedString = this.id + "hide"; //string should be id+hide for the element that should be hidden
+        var element = document.getElementById(formulatedString);
+        if (element.className == "hidden") {
+          element.className = "";
+          document.getElementById(this.id).innerHTML = "Hide";
+        } else {
+          element.className = "hidden";
+          document.getElementById(this.id).innerHTML = "Expand";
+        }
+      };
+      for (i = 1; i < 5; i++) {
+        document.getElementById(i).onclick = onClick;
+      }
+      function ResetAll() {
+        for (i = 1; i < 5; i++) {
+          document.getElementById(i + "hide").className = "hidden";
+          document.getElementById(i).innerHTML = "Expand";
+        }
+      }
+    </script>
+  </body>
+</html>
