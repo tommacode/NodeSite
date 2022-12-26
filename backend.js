@@ -135,8 +135,10 @@ async function GetUserID(cookie, req) {
   );
   //Update lastused time, UserAgentLastSeen, IPLastSeen
   const date = new Date();
+  //Make this datetime value
+  const datetime = date.toISOString().slice(0, 19).replace("T", " ");
   const sql = `UPDATE Sessions SET TimeLastUsed = ?, UserAgentLastSeen = ?, IPLastSeen = ? WHERE Cookie = ?`;
-  await pool.query(sql, [date, req.headers["user-agent"], req.ip, cookie]);
+  await pool.query(sql, [datetime, req.headers["user-agent"], req.ip, cookie]);
 
   if (result.length == 0) {
     return null;
@@ -157,6 +159,23 @@ function SendEmail(Recipient, Subject, Content) {
 function ValidateEmail(email) {
   const re = /\S+@\S+\.\S+/;
   return re.test(email);
+}
+
+async function CloudflareTurnStyle(token) {
+  // "/siteverify" API endpoint.
+  let formData = new FormData();
+  formData.append("secret", process.env.CfTurnStyleSecret);
+  formData.append("response", token);
+  //formData.append("remoteip", ip);
+
+  const url = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
+  const result = await fetch(url, {
+    body: formData,
+    method: "POST",
+  });
+
+  const outcome = await result.json();
+  return outcome.success;
 }
 
 //HTML responses
@@ -207,7 +226,7 @@ app.get("/myAccount", async (req, res) => {
     res.redirect("/Login");
   } else {
     let [Sessions] = await pool.query(
-      "SELECT ID,TimeCreated,TimeLastUsed,IPLastSeen,IPCreatedWith,UserAgentCreatedWith,UserAgentLastSeen FROM Sessions WHERE UserID = ? ORDER BY TimeLastUsed DESC",
+      "SELECT ID,TimeCreated,TimeLastUsed,IPLastSeen,IPCreatedWith,UserAgentCreatedWith,UserAgentLastSeen FROM Sessions WHERE UserID = ? ORDER BY TimeLastUsed DESC LIMIT 5",
       [UserID]
     );
     const [CurrentSession] = await pool.query(
@@ -219,6 +238,17 @@ app.get("/myAccount", async (req, res) => {
       if (session.ID == CurrentSession[0].ID) {
         session.CurrentSession = "(Current Session)";
       }
+      //Format the ip addresses
+      if (session.IPLastSeen == "::1") {
+        session.IPLastSeen = "Localhost";
+      } else {
+        session.IPLastSeen = session.IPLastSeen.replace("::ffff:", "");
+      }
+      if (session.IPCreatedWith == "::1") {
+        session.IPCreatedWith = "Localhost";
+      } else {
+        session.IPCreatedWith = session.IPCreatedWith.replace("::ffff:", "");
+      }
       session.TimeCreated = session.TimeCreated.toLocaleString("en-GB", {
         day: "numeric",
         month: "long",
@@ -227,7 +257,7 @@ app.get("/myAccount", async (req, res) => {
         minute: "2-digit",
         second: "2-digit",
       });
-      session.TimeLastUsed = session.TimeCreated.toLocaleString("en-GB", {
+      session.TimeLastUsed = session.TimeLastUsed.toLocaleString("en-GB", {
         day: "numeric",
         month: "long",
         year: "numeric",
@@ -644,64 +674,79 @@ app.post("/api/user/create", async (req, res) => {
   const username = req.body.username;
   const password = req.body.password;
   const email = req.body.email;
-  //Check for the username existing
-  let sql = "SELECT count(*) FROM Users WHERE Username = ?";
-  const [result] = await pool.query(sql, [username]);
-  if (result[0]["count(*)"] == 0) {
-    Logs(req, 200);
-    //check if username exists
-    const passwordHash = crypto
-      .createHash("sha256")
-      .update(password)
-      .digest("hex");
-    sql = `INSERT INTO Users (Username, Password, Email) VALUES (?, ?, ?)`;
-    pool.query(sql, [username, passwordHash, email]);
-    res.sendStatus(200);
-  } else {
-    res.sendStatus(409);
-    Logs(req, 409);
-  }
+  const cfTurnStyle = req.body["cf-turnstile-response"];
+  CloudflareTurnStyle(cfTurnStyle).then(async (verdict) => {
+    if (verdict == true) {
+      //Check for the username existing
+      let sql = "SELECT count(*) FROM Users WHERE Username = ?";
+      const [result] = await pool.query(sql, [username]);
+      if (result[0]["count(*)"] == 0) {
+        Logs(req, 200);
+        //check if username exists
+        const passwordHash = crypto
+          .createHash("sha256")
+          .update(password)
+          .digest("hex");
+        sql = `INSERT INTO Users (Username, Password, Email) VALUES (?, ?, ?)`;
+        pool.query(sql, [username, passwordHash, email]);
+        res.send("Account created");
+      } else {
+        res.send("Username already exists");
+        Logs(req, 409);
+      }
+    } else {
+      res.send("Suspected bot");
+      Logs(req, 403);
+    }
+  });
 });
 
 app.post("/api/user/login", async (req, res) => {
   const username = req.body.username;
   const password = req.body.password;
-  const passwordHash = crypto
-    .createHash("sha256")
-    .update(password)
-    .digest("hex");
-  let sql = `SELECT * FROM Users WHERE Username = ? AND Password = ?`;
-  const [result] = await pool.query(sql, [username, passwordHash]);
-  if (result.length == 1) {
-    Logs(req, 200);
-    //Make a cookie with the username current time and a random number
-    const date = new Date();
-    const datetime = date.toISOString().slice(0, 19).replace("T", " ");
-    const cookie = crypto
-      .createHash("sha256")
-      .update(username + datetime + crypto.randomBytes(16).toString("hex"))
-      .digest("hex");
-    let IP = req.ip;
-    if (process.env.PROXIED == "true") {
-      IP = req.headers["x-forwarded-for"];
+  const cfTurnStyle = req.body["cf-turnstile-response"];
+  CloudflareTurnStyle(cfTurnStyle).then(async (verdict) => {
+    if (verdict == true) {
+      const passwordHash = crypto
+        .createHash("sha256")
+        .update(password)
+        .digest("hex");
+      let sql = `SELECT * FROM Users WHERE Username = ? AND Password = ?`;
+      const [result] = await pool.query(sql, [username, passwordHash]);
+      if (result.length == 1) {
+        Logs(req, 200);
+        //Make a cookie with the username current time and a random number
+        const date = new Date();
+        const datetime = date.toISOString().slice(0, 19).replace("T", " ");
+        const cookie = crypto
+          .createHash("sha256")
+          .update(username + datetime + crypto.randomBytes(16).toString("hex"))
+          .digest("hex");
+        let IP = req.ip;
+        if (process.env.PROXIED == "true") {
+          IP = req.headers["x-forwarded-for"];
+        }
+        sql = `INSERT INTO Sessions (Cookie, UserID, TimeLastUsed,IPCreatedWith, IPLastSeen, UserAgentLastSeen, UserAgentCreatedWith) VALUES (?, ?, ?, ?, ?, ?, ?)`;
+        await pool.query(sql, [
+          cookie,
+          result[0].ID,
+          datetime,
+          IP,
+          IP,
+          req.headers["user-agent"],
+          req.headers["user-agent"],
+        ]);
+        res.cookie("Auth", cookie);
+        res.send("Logged in");
+      } else {
+        res.send("Incorrect username or password");
+        Logs(req, 403);
+      }
+    } else {
+      res.send("Suspected bot");
+      Logs(req, 403);
     }
-
-    sql = `INSERT INTO Sessions (Cookie, UserID, TimeLastUsed,IPCreatedWith, IPLastSeen, UserAgentLastSeen, UserAgentCreatedWith) VALUES (?, ?, ?, ?, ?, ?, ?)`;
-    await pool.query(sql, [
-      cookie,
-      result[0].ID,
-      datetime,
-      IP,
-      IP,
-      req.headers["user-agent"],
-      req.headers["user-agent"],
-    ]);
-    res.cookie("Auth", cookie);
-    res.sendStatus(200);
-  } else {
-    res.sendStatus(403);
-    Logs(req, 403);
-  }
+  });
 });
 
 app.get("/api/user", async (req, res) => {

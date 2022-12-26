@@ -1,6 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
+    <script
+      src="https://challenges.cloudflare.com/turnstile/v0/api.js"
+      async
+      defer
+    ></script>
     <meta charset="UTF-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -44,6 +49,11 @@
         />
         <br />
         <p id="PasswordCheck">Passwords match</p>
+        <div
+          class="cf-turnstile"
+          data-action="SignUp"
+          data-sitekey="0x4AAAAAAABvVJLyIVpXKmKv"
+        ></div>
         <input class="button" type="submit" value="Sign Up" />
       </form>
       <a class="listLink" href="/LogIn">Already have an account? Log in</a>
@@ -74,12 +84,12 @@
           //send the data the same way that the form would send it
           body: new URLSearchParams(new FormData(form)),
         }).then((res) => {
-          if (res.status == 409) {
-            alert("Username in use");
-          } else {
-            alert("Account created");
-            window.location.href = "/logIn";
-          }
+          res.text().then((text) => {
+            alert(text);
+            if (text == "Account created") {
+              window.location.href = "/";
+            }
+          });
         });
       });
     </script>

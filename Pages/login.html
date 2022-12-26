@@ -1,6 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
+    <script
+      src="https://challenges.cloudflare.com/turnstile/v0/api.js"
+      async
+      defer
+    ></script>
     <meta charset="UTF-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -27,6 +32,12 @@
           placeholder="Password"
         />
         <br />
+        <div
+          class="cf-turnstile"
+          data-action="Login"
+          data-sitekey="0x4AAAAAAABvVJLyIVpXKmKv"
+        ></div>
+        <br />
         <input class="button" type="submit" value="Login" />
       </form>
       <a class="listLink" href="/signUp">Don't have an account? Create One</a>
@@ -41,11 +52,15 @@
           //send the data the same way that the form would send it
           body: new URLSearchParams(new FormData(form)),
         }).then((res) => {
-          if (res.status != 200) {
-            alert("Invalid credentials");
+          if (res.status == 200) {
+            res.text().then((text) => {
+              alert(text);
+              if (text == "Logged in") {
+                window.location.href = "/";
+              }
+            });
           } else {
-            alert("Logged in");
-            window.location.href = "/";
+            alert("Error");
           }
         });
       });
