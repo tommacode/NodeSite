@@ -1,5 +1,7 @@
 /node_modules/
 *.env
-/Photos/
+/Photos/*
 /Test/
 /.vscode/
+/Avatars/*
+!/Avatars/0.png

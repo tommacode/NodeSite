@@ -8,3 +8,8 @@ SENDER_EMAIL=
 EMAIL=
 ManagementToken=
 PROIXED=
+
+CfTurnStyleSecret=
+
+AvatarPath=
+ArticlePhotosPath=

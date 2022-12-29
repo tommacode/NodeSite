@@ -30,6 +30,17 @@ app.use(cookies());
 //EJS
 app.set("view engine", "ejs");
 
+//fileUpload
+const fileUpload = require("express-fileupload");
+app.use(
+  fileUpload({
+    createParentPath: true,
+  })
+);
+
+//Image conversion
+const Jimp = require("jimp");
+
 //Headers
 app.set("x-powered-by", false);
 //Rate limit
@@ -56,8 +67,10 @@ const pool = mysql
   })
   .promise();
 
-async function Logs(req, StatusCode) {
+async function Logs(req, StatusCode, StartTime) {
   const date = new Date();
+
+  const FinishTime = date.getTime();
   //Change date to datetime value
   const datetime = date.toISOString().slice(0, 19).replace("T", " ");
   //Get IP
@@ -91,7 +104,9 @@ async function Logs(req, StatusCode) {
   }
 
   console.log(
-    `${datetime} | ${ip} | ${forwardedfor} | ${useragent} | ${method} | ${path} | ${StatusCode} | ${Username}`
+    `${datetime} | ${ip} | ${forwardedfor} | ${useragent} | ${method} | ${path} | ${StatusCode} | ${Username} | ${
+      FinishTime - StartTime
+    }ms`
   );
   sql = `INSERT INTO Logs (Time, ip, forwardedfor, useragent, method, path, statuscode) VALUES (?, ?, ?, ?, ?, ?, ?)`;
   const values = [
@@ -180,50 +195,60 @@ async function CloudflareTurnStyle(token) {
 
 //HTML responses
 app.get("/", (req, res) => {
+  const StartTime = new Date().getTime();
   res.sendFile(path.join(__dirname, "Pages", "index.html"));
-  Logs(req, 200);
+  Logs(req, 200, StartTime);
 });
 
 app.get("/projects", (req, res) => {
+  const StartTime = new Date().getTime();
   res.sendFile(path.join(__dirname, "Pages", "NavPage.html"));
-  Logs(req, 200);
+  Logs(req, 200, StartTime);
 });
 
 app.get("/createArticle", (req, res) => {
+  const StartTime = new Date().getTime();
   res.sendFile(path.join(__dirname, "Pages", "createArticle.html"));
-  Logs(req, 200);
+  Logs(req, 200, StartTime);
 });
 
 app.get("/css.css", (req, res) => {
+  const StartTime = new Date().getTime();
   res.sendFile(__dirname + "/Pages/css.css");
-  Logs(req, 200);
+  Logs(req, 200, StartTime);
 });
 
 app.get("/favicon.ico", (req, res) => {
+  const StartTime = new Date().getTime();
   res.sendFile(__dirname + "/Pages/favicon32.ico");
-  Logs(req, 200);
+  Logs(req, 200, StartTime);
 });
 
 app.get("/SignUp", (req, res) => {
+  const StartTime = new Date().getTime();
   res.sendFile(__dirname + "/Pages/signUp.html");
-  Logs(req, 200);
+  Logs(req, 200, StartTime);
 });
 
 app.get("/Login", (req, res) => {
+  const StartTime = new Date().getTime();
   res.sendFile(__dirname + "/Pages/login.html");
-  Logs(req, 200);
+  Logs(req, 200, StartTime);
 });
 
 app.get("/Logout", (req, res) => {
+  const StartTime = new Date().getTime();
   res.clearCookie("Auth");
   res.redirect("/");
-  Logs(req, 200);
+  Logs(req, 200, StartTime);
 });
 
 app.get("/myAccount", async (req, res) => {
+  const StartTime = new Date().getTime();
   let UserID = await GetUserID(req.cookies.Auth, req);
   if (UserID == null) {
     res.redirect("/Login");
+    Logs(req, 302, StartTime);
   } else {
     let [Sessions] = await pool.query(
       "SELECT ID,TimeCreated,TimeLastUsed,IPLastSeen,IPCreatedWith,UserAgentCreatedWith,UserAgentLastSeen FROM Sessions WHERE UserID = ? ORDER BY TimeLastUsed DESC LIMIT 5",
@@ -266,14 +291,22 @@ app.get("/myAccount", async (req, res) => {
         second: "2-digit",
       });
     });
-    res.render(__dirname + "/Pages/myAccount", { Sessions: Sessions });
-    Logs(req, 200);
+    let [pfp] = await pool.query(
+      "SELECT ProfilePicture FROM Users WHERE ID = ?",
+      [UserID]
+    );
+    res.render(__dirname + "/Pages/myAccount", {
+      Sessions: Sessions,
+      ProfilePicture: pfp[0].ProfilePicture,
+    });
+    Logs(req, 200, StartTime);
   }
 });
 
 //API responses
 //General
 app.get("/api/projects", async (req, res) => {
+  const StartTime = new Date().getTime();
   const cookie = req.cookies;
   let sql;
   if (await Authorised(cookie["Auth"], pool)) {
@@ -283,10 +316,11 @@ app.get("/api/projects", async (req, res) => {
   }
   const [result] = await pool.query(sql);
   res.send(result);
-  Logs(req, 200);
+  Logs(req, 200, StartTime);
 });
 
 app.get("/projects/*", async (req, res) => {
+  const StartTime = new Date().getTime();
   let project = req.path.split("/")[2];
   project = project.replaceAll("-", " ");
   const cookies = req.cookies;
@@ -294,7 +328,7 @@ app.get("/projects/*", async (req, res) => {
   const [result] = await pool.query(sql, [project]);
   if (result.length == 0) {
     res.sendFile(__dirname + "/Pages/404.html");
-    Logs(req, 404);
+    Logs(req, 404, StartTime);
     return;
   }
   const UserID = await GetUserID(cookies["Auth"], req);
@@ -305,7 +339,7 @@ app.get("/projects/*", async (req, res) => {
   } else {
     result[0].Liked = false;
   }
-  sql = `SELECT Users.Username,Comments.Content,Comments.Likes,Comments.Unique_id FROM Comments,Users WHERE Comments.UserID=Users.ID AND Project = ? ORDER BY FIELD(Unique_id, ?) DESC, Likes DESC`;
+  sql = `SELECT Users.Username,Comments.Content,Comments.Likes,Comments.Unique_id,ProfilePicture FROM Comments,Users WHERE Comments.UserID=Users.ID AND Project = ? ORDER BY FIELD(Unique_id, ?) DESC, Likes DESC`;
   let [comments] = await pool.query(sql, [project, req.cookies.comment]);
 
   //If the user is logged in then check if they liked the comment
@@ -337,22 +371,18 @@ app.get("/projects/*", async (req, res) => {
     Liked: result[0].Liked,
     Comments: comments,
   });
-  Logs(req, 200);
-});
-
-app.get("/robots.txt", (req, res) => {
-  res.sendFile(path.join(__dirname, "Pages", "robots.txt"));
-  Logs(req, 200);
+  Logs(req, 200, StartTime);
 });
 
 app.get("/photos/:photo", (req, res) => {
+  const StartTime = new Date().getTime();
   const photo = req.params.photo;
-  res.sendFile(__dirname + "/Photos/" + photo);
-  Logs(req, 200);
+  res.sendFile(process.env.ArticlePhotosPath + photo);
+  Logs(req, 200, StartTime);
 });
 
 app.get("/api/projects/:project", async (req, res) => {
-  Logs(req, 200);
+  const StartTime = new Date().getTime();
   let project = req.params.project;
   project = project.replaceAll("-", " ");
   const cookies = req.cookies;
@@ -367,18 +397,20 @@ app.get("/api/projects/:project", async (req, res) => {
     result[0].Liked = false;
   }
   res.send(result);
+  Logs(req, 200);
 });
 
 //Likes
 app.get("/api/projects/:project/like", LikeLimit, async (req, res) => {
   //Check to see if the request can be dropped
+  const StartTime = new Date().getTime();
   if (
     req.params.project == "" ||
     req.params.project == null ||
     req.params.project == undefined
   ) {
     res.sendStatus(400);
-    Logs(req, 400);
+    Logs(req, 400, StartTime);
     return;
   }
   let project = req.params.project;
@@ -389,7 +421,7 @@ app.get("/api/projects/:project/like", LikeLimit, async (req, res) => {
   const [result] = await pool.query(sql, [project]);
   if (result.length == 0) {
     res.sendStatus(404);
-    Logs(req, 404);
+    Logs(req, 404, StartTime);
     return;
   }
   //Check to see if the user has liked the project
@@ -403,7 +435,7 @@ app.get("/api/projects/:project/like", LikeLimit, async (req, res) => {
     sql = `UPDATE Projects SET Likes = Likes - 1 WHERE ID = ?`;
     await pool.query(sql, [result[0].ID]);
     res.send({ Status: "Removed" });
-    Logs(req, 200);
+    Logs(req, 200, StartTime);
   }
   if (liked[0]["count(*)"] < 1) {
     //Add the like
@@ -413,23 +445,26 @@ app.get("/api/projects/:project/like", LikeLimit, async (req, res) => {
     sql = `UPDATE Projects SET Likes = Likes + 1 WHERE ID = ?`;
     await pool.query(sql, [result[0].ID]);
     res.send({ Status: "Added" });
-    Logs(req, 200);
+    Logs(req, 200, StartTime);
   }
 });
 
 //Comments
 app.post("/api/projects/:project/comment", CommentLimit, async (req, res) => {
-  Logs(req, 204);
+  const StartTime = new Date().getTime();
   if (req.body.comment == "" || req.params.project == "") {
     res.sendStatus(400);
+    Logs(req, 400, StartTime);
     return;
   }
   if (req.body.comment == null || req.params.project == null) {
     res.sendStatus(400);
+    Logs(req, 400, StartTime);
     return;
   }
   if (req.body.comment == undefined || req.params.project == undefined) {
     res.sendStatus(400);
+    Logs(req, 400, StartTime);
     return;
   }
   let project = req.params.project;
@@ -447,24 +482,28 @@ app.post("/api/projects/:project/comment", CommentLimit, async (req, res) => {
   const UserID = await GetUserID(req.cookies["Auth"], req);
   if (UserID == null) {
     res.sendStatus(401);
+    Logs(req, 401, StartTime);
     return;
   }
   if (UserID == undefined) {
     res.sendStatus(401);
+    Logs(req, 401, StartTime);
     return;
   }
   if (UserID.length == 0) {
     res.sendStatus(401);
+    Logs(req, 401, StartTime);
     return;
   }
   const sql = `INSERT INTO Comments (Project,UserID,Content,Time,Likes,Unique_id) VALUES (?, ?, ?, ?, ?, ?)`;
   const values = [project, UserID, comment, datetime, 0, id];
   pool.query(sql, values);
   res.sendStatus(204);
+  Logs(req, 204, StartTime);
 });
 
 app.get("/api/projects/:project/comments", async (req, res) => {
-  Logs(req, 200);
+  const StartTime = new Date().getTime();
   //Get the comments for the project
   let project = req.params.project;
   project = project.replaceAll("-", " ");
@@ -491,6 +530,7 @@ app.get("/api/projects/:project/comments", async (req, res) => {
     }
   }
   res.send(result);
+  Logs(req, 200, StartTime);
 });
 
 //Comment likes
@@ -543,6 +583,7 @@ app.get("/api/comments/:id/like", async (req, res) => {
 
 //Post Data
 app.post("/api/projects/new", async (req, res) => {
+  const StartTime = new Date().getTime();
   const password = req.cookies.Auth;
   let title = req.body.title;
   let appetizer = req.body.appetizer;
@@ -557,7 +598,6 @@ app.post("/api/projects/new", async (req, res) => {
   tags = tags.replaceAll('"', '""');
 
   if (await Authorised(password, pool)) {
-    Logs(req, 200);
     //Send Email With sendgrid
     const msg = {
       to: process.env.EMAIL,
@@ -581,10 +621,11 @@ app.post("/api/projects/new", async (req, res) => {
         res.send(
           `Successfully added project the visibility is set to ${Status}`
         );
+        Logs(req, 200, StartTime);
       });
   } else {
     res.sendStatus(401);
-    Logs(req, 401);
+    Logs(req, 401, StartTime);
   }
 });
 
@@ -617,60 +658,66 @@ app.post("/api/projects/:id/edit", async (req, res) => {
 
 //Management
 app.get("/management", async (req, res) => {
+  const StartTime = new Date().getTime();
   const Cookies = req.cookies;
   if (await Authorised(Cookies["Auth"], pool)) {
     res.sendFile(__dirname + "/AdminPages/management.html");
-    Logs(req, 200);
+    Logs(req, 200, StartTime);
   } else {
     res.redirect("/login");
-    Logs(req, 302);
+    Logs(req, 302, StartTime);
   }
 });
 
 app.get("/management/:Page", async (req, res) => {
+  const StartTime = new Date().getTime();
   const Cookies = req.cookies;
   if (await Authorised(Cookies["Auth"], pool)) {
     res.sendFile(__dirname + "/AdminPages/" + req.params.Page + ".html");
-    Logs(req, 200);
+    Logs(req, 200, StartTime);
   } else {
     res.redirect("/login");
-    Logs(req, 302);
+    Logs(req, 302, StartTime);
   }
 });
 
 app.get("/api/showImages", async (req, res) => {
+  const StartTime = new Date().getTime();
   const Cookies = req.cookies;
   if (await Authorised(Cookies["Auth"], pool)) {
     const files = fs.readdirSync(__dirname + "/Photos");
     res.send(files);
-    Logs(req, 200);
+    Logs(req, 200, StartTime);
   } else {
     res.sendStatus(403);
-    Logs(req, 403);
+    Logs(req, 403, StartTime);
   }
 });
 
 //Login
 app.get("/login", (req, res) => {
+  const StartTime = new Date().getTime();
   res.sendFile(__dirname + "/Pages/login.html");
-  Logs(req, 200);
+  Logs(req, 200, StartTime);
 });
 
 app.post("/api/projects/:project/visibility", (req, res) => {
+  const StartTime = new Date().getTime();
   let project = req.params.project;
   project = project.replaceAll("-", " ");
   const cookies = req.cookies;
   if (Authorised(cookies["Auth"], pool)) {
-    Logs(req, 204);
     //use mysql if statement if status = 1 then set to 0 else set to 1
     let sql = `UPDATE Projects SET Status = IF(Status = 1, 0, 1) WHERE title = ?`;
     pool.query(sql, [project]);
     res.sendStatus(204);
+    Logs(req, 204, StartTime);
   }
 });
 
 //User accounts
 app.post("/api/user/create", async (req, res) => {
+  const StartTime = new Date().getTime();
   const username = req.body.username;
   const password = req.body.password;
   const email = req.body.email;
@@ -681,7 +728,6 @@ app.post("/api/user/create", async (req, res) => {
       let sql = "SELECT count(*) FROM Users WHERE Username = ?";
       const [result] = await pool.query(sql, [username]);
       if (result[0]["count(*)"] == 0) {
-        Logs(req, 200);
         //check if username exists
         const passwordHash = crypto
           .createHash("sha256")
@@ -690,18 +736,20 @@ app.post("/api/user/create", async (req, res) => {
         sql = `INSERT INTO Users (Username, Password, Email) VALUES (?, ?, ?)`;
         pool.query(sql, [username, passwordHash, email]);
         res.send("Account created");
+        Logs(req, 200, StartTime);
       } else {
         res.send("Username already exists");
-        Logs(req, 409);
+        Logs(req, 409, StartTime);
       }
     } else {
       res.send("Suspected bot");
-      Logs(req, 403);
+      Logs(req, 403, StartTime);
     }
   });
 });
 
 app.post("/api/user/login", async (req, res) => {
+  const StartTime = new Date().getTime();
   const username = req.body.username;
   const password = req.body.password;
   const cfTurnStyle = req.body["cf-turnstile-response"];
@@ -714,7 +762,7 @@ app.post("/api/user/login", async (req, res) => {
       let sql = `SELECT * FROM Users WHERE Username = ? AND Password = ?`;
       const [result] = await pool.query(sql, [username, passwordHash]);
       if (result.length == 1) {
-        Logs(req, 200);
+        Logs(req, 200, StartTime);
         //Make a cookie with the username current time and a random number
         const date = new Date();
         const datetime = date.toISOString().slice(0, 19).replace("T", " ");
@@ -740,46 +788,166 @@ app.post("/api/user/login", async (req, res) => {
         res.send("Logged in");
       } else {
         res.send("Incorrect username or password");
-        Logs(req, 403);
+        Logs(req, 403, StartTime);
       }
     } else {
       res.send("Suspected bot");
-      Logs(req, 403);
+      Logs(req, 403, StartTime);
     }
   });
 });
 
 app.get("/api/user", async (req, res) => {
+  const StartTime = new Date();
   const cookie = req.cookies.Auth;
   let sql = `SELECT * FROM Sessions WHERE Cookie = ?`;
   let [result] = await pool.query(sql, [cookie]);
   if (result.length == 1) {
-    Logs(req, 200);
     sql = `SELECT Username,Sudo FROM Users WHERE id = ?`;
     [result] = await pool.query(sql, [result[0].UserID]);
     res.send(result[0]);
+    Logs(req, 200, StartTime);
   } else {
     res.sendStatus(204);
-    Logs(req, 204);
+    Logs(req, 204, StartTime);
   }
 });
 
-app.get("/api/user/sessions", async (req, res) => {
-  const cookie = req.cookies.Auth;
-  let UserID = await GetUserID(cookie, req);
-  if (UserID != null) {
-    Logs(req, 200);
-    let sql = `SELECT TimeCreated,TimeLastUsed,IPCreatedWith,UserAgentCreatedWith,IPLastSeen,UserAgentLastSeen FROM Sessions WHERE UserID = ?`;
-    const [result] = await pool.query(sql, [UserID]);
-    res.send(result);
+app.post("/api/upload/articlePhotos", async (req, res) => {
+  const StartTime = new Date().getTime();
+  if (Authorised(req.cookies["Auth"], pool) == false) {
+    res.send({ status: false, message: "Not authorised" });
+    Logs(req, 403, StartTime);
+    return;
   }
+  if (!req.files) {
+    res.send({
+      status: false,
+      message: "No file uploaded",
+    });
+  } else {
+    //Use the name of the input field (i.e. "Image") to retrieve the uploaded file
+    let Image = req.files.Image;
+
+    //Use the mv() method to place the file in the upload directory (i.e. "uploads")
+    Image.mv(process.env.ArticlePhotosPath + Image.name);
+
+    if (
+      Image.mimetype != "image/png" &&
+      Image.mimetype != "image/jpeg" &&
+      Image.mimetype != "image/jpg"
+    ) {
+      res.status(400).send({
+        status: false,
+        message: "File is not a image. Only jpg, jpeg and png format allowed",
+      });
+      Logs(req, 400, StartTime);
+      return;
+    }
+
+    //send response
+    res.sendStatus(204);
+    Logs(req, 204, StartTime);
+  }
+});
+
+app.post("/api/upload/pfp", async (req, res) => {
+  const StartTime = new Date().getTime();
+  if ((await GetUserID(req.cookies["Auth"], req)) == null) {
+    res.send({ status: false, message: "Not authorised" });
+    Logs(req, 403, StartTime);
+    return;
+  } else {
+    if (!req.files) {
+      res.send({ status: false, message: "No file uploaded" });
+      Logs(req, 400, StartTime);
+      return;
+    }
+    if (req.files.file.size > 2 * 1024 * 1024) {
+      res.send({ status: false, message: "File can't be larger than 2MB" });
+      Logs(req, 400, StartTime);
+      return;
+    }
+    let Image = req.files.file;
+
+    if (
+      Image.mimetype != "image/png" &&
+      Image.mimetype != "image/jpeg" &&
+      Image.mimetype != "image/jpg"
+    ) {
+      res.status(400).send({
+        status: false,
+        message: "File is not a image. Only jpg, jpeg and png format allowed",
+      });
+      Logs(req, 400, StartTime);
+      return;
+    }
+
+    //By here we have established the file is valid
+    const UserID = await GetUserID(req.cookies["Auth"], req);
+    const [PFPID] = await pool.query(
+      "SELECT ProfilePicture FROM Users WHERE ID = ?",
+      [UserID]
+    );
+    let PictureID = PFPID[0].ProfilePicture;
+    if (PictureID == 0) {
+      PictureID = crypto.randomBytes(16).toString("hex");
+      pool.query("UPDATE Users SET ProfilePicture = ? WHERE ID = ?", [
+        PictureID,
+        UserID,
+      ]);
+    }
+    let fileType = Image.mimetype.split("/")[1];
+    //Convert to png if not already
+    if (fileType != "png") {
+      fileType = "png";
+      const image = await Jimp.read(Image.data);
+      Image.data = await image.getBufferAsync(Jimp.MIME_PNG);
+    }
+    //Use the mv() method to place the file in the upload directory (i.e. "uploads")
+    Image.mv(process.env.AvatarPath + PictureID + ".png");
+    res.sendStatus(204);
+    Logs(req, 204, StartTime);
+  }
+});
+
+app.post("/api/remove/pfp", async (req, res) => {
+  const StartTime = new Date().getTime();
+  if ((await GetUserID(req.cookies["Auth"], req)) == null) {
+    res.send({ status: false, message: "Not authorised" });
+    Logs(req, 403, StartTime);
+    return;
+  } else {
+    const UserID = await GetUserID(req.cookies["Auth"], req);
+    const [PFPID] = await pool.query(
+      "SELECT ProfilePicture FROM Users WHERE ID = ?",
+      [UserID]
+    );
+    let PictureID = PFPID[0].ProfilePicture;
+    if (PictureID != 0) {
+      fs.unlink(process.env.AvatarPath + PictureID + ".png", (err) => {
+        if (err) {
+          console.error(err);
+          return;
+        }
+      });
+      pool.query("UPDATE Users SET ProfilePicture = 0 WHERE ID = ?", [UserID]);
+    }
+    res.sendStatus(204);
+    Logs(req, 204, StartTime);
+  }
+});
+
+app.get("/api/avatar/:pfp", async (req, res) => {
+  const pfp = req.params.pfp;
+  //check if the image exists
+  if (!fs.existsSync(process.env.AvatarPath + pfp + ".png")) {
+    res.sendFile(process.env.AvatarPath + "0.png");
+    return;
+  }
+  res.sendFile(process.env.AvatarPath + pfp + ".png");
 });
 
 app.listen(process.env.PORT, () => {
   console.log(`Server is running on http://localhost:${process.env.PORT}`);
 });
-
-//Make request to the like api
-// This request will then be checked to see if the user has already liked the project
-// If it has then it will remove the like and send back a different response code to if it hasnt liked it
-// Meaning likes work as a toggle. This will work for ssr as the liked status doesn't need to be sent to the client

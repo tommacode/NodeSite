@@ -38,7 +38,8 @@ create table Users(
     Username VARCHAR(16),
     Email VARCHAR(255),
     Password VARCHAR(255),
-    Sudo INT
+    Sudo INT,
+    ProfilePicture VARCHAR(255)
 );
 
 create table Sessions(
@@ -63,6 +64,15 @@ create table commentLikes(
     UserID INT
 );
 
+
 Make an account sudo
 
 UPDATE Users SET Sudo = 1 WHERE Username = '';
+
+
+
+All changes to the tables
+
+ALTER TABLE Users ADD ProfilePicture VARCHAR(255);
+
+ALTER TABLE Users MODIFY ProfilePicture VARCHAR(255) DEFAULT '0';

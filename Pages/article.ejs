@@ -80,6 +80,11 @@
         <div id="commentList">
           <% for (var i = 0; i < Comments.length; i++) { %>
           <div class="borders">
+            <img
+              class="CommentProfilePicture"
+              src="/api/avatar/<%= Comments[i].ProfilePicture %>"
+              alt="Profile Picture"
+            />
             <h4><%= Comments[i].Username %></h4>
             <p><%= Comments[i].Content %></p>
             <button
@@ -210,6 +215,7 @@
           //Wait and then clear the response
           setTimeout(function () {
             document.getElementById("response").innerHTML = "";
+            location.reload();
           }, 2000);
         };
       }

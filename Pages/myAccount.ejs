@@ -42,7 +42,12 @@
         </ul>
       </nav>
       <!--Big header to draw attention-->
-      <header>
+      <img
+        id="MyAccountPfp"
+        src="/api/avatar/<%= ProfilePicture %>"
+        alt="pfp"
+      />
+      <header id="MyAccount">
         <h1>Welcome</h1>
         <h3>Manage your account</h3>
       </header>
@@ -52,6 +57,24 @@
         <p>
           <a class="listLink" href="/Logout">Logout</a>
         </p>
+      </div>
+      <div class="borders">
+        <h3>Add/Update profile picture</h3>
+        <form
+          id="Changepfp"
+          action="/api/upload/pfp"
+          method="post"
+          enctype="multipart/form-data"
+        >
+          <input type="file" name="file" />
+          <br />
+          <br />
+          <input type="submit" value="Upload" />
+        </form>
+        <div class="borders">
+          <h3>Remove Profile Picture</h3>
+          <button onclick="RemovePFP()">Remove</button>
+        </div>
       </div>
       <div class="borders">
         <h3>Sessions</h3>
@@ -108,5 +131,47 @@
         </ul>
       </div>
     </div>
+    <script>
+      //Add an event listener to the #Changepfp form
+      document
+        .getElementById("Changepfp")
+        .addEventListener("submit", function (e) {
+          //Submit the form with AJAX
+          e.preventDefault();
+          var form = document.getElementById("Changepfp");
+          var formData = new FormData(form);
+          var xhr = new XMLHttpRequest();
+          xhr.open("POST", "/api/upload/pfp");
+          xhr.send(formData);
+          xhr.onload = function () {
+            if (xhr.status == 204) {
+              //If the request was successful, reload the page
+              location.reload();
+            } else {
+              //If the request was not successful, alert the user with the response text
+              message = xhr.responseText;
+              message = JSON.parse(message);
+              alert(message.message);
+            }
+          };
+        });
+
+      function RemovePFP() {
+        var xhr = new XMLHttpRequest();
+        xhr.open("POST", "/api/remove/pfp");
+        xhr.send();
+        xhr.onload = function () {
+          if (xhr.status == 204) {
+            //If the request was successful, reload the page
+            location.reload();
+          } else {
+            //If the request was not successful, alert the user with the response text
+            message = xhr.responseText;
+            message = JSON.parse(message);
+            alert(message.message);
+          }
+        };
+      }
+    </script>
   </body>
 </html>

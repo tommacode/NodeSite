@@ -72,6 +72,18 @@
         <p><strong>Characters: </strong><span id="charactercount">0</span></p>
       </div>
       <div class="borders">
+        <form
+          action="/api/upload/articlePhotos"
+          method="POST"
+          id="ImageUpload"
+          enctype="multipart/form-data"
+        >
+          <input type="file" name="Image" id="Image" />
+          <br />
+          <button>Upload</button>
+        </form>
+      </div>
+      <div class="borders">
         <h3>Images:</h3>
         <div id="images"></div>
       </div>
