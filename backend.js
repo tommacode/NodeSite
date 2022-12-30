@@ -91,16 +91,20 @@ async function Logs(req, StatusCode, StartTime) {
   //Get Logged in user
   const cookie = req.cookies["Auth"];
   let Username;
+  let UserID;
   if (cookie != undefined) {
     let sql = `SELECT Users.Username FROM Users,Sessions WHERE Sessions.UserID = Users.ID AND Sessions.Cookie = ?`;
     let [User] = await pool.query(sql, [cookie]);
     if (User.length == 0) {
       Username = "Not Logged In";
+      UserID = 0;
     } else {
       Username = `User: ${User[0].Username}`;
+      UserID = await GetUserID(cookie, req);
     }
   } else {
     Username = "Not Logged In";
+    UserID = 0;
   }
 
   console.log(
@@ -108,7 +112,7 @@ async function Logs(req, StatusCode, StartTime) {
       FinishTime - StartTime
     }ms`
   );
-  sql = `INSERT INTO Logs (Time, ip, forwardedfor, useragent, method, path, statuscode) VALUES (?, ?, ?, ?, ?, ?, ?)`;
+  sql = `INSERT INTO Logs (Time, ip, forwardedfor, useragent, method, path, statuscode, User) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
   const values = [
     datetime,
     ip,
@@ -117,6 +121,7 @@ async function Logs(req, StatusCode, StartTime) {
     method,
     path,
     StatusCode,
+    UserID,
   ];
   pool.query(sql, values);
 }
@@ -153,7 +158,13 @@ async function GetUserID(cookie, req) {
   //Make this datetime value
   const datetime = date.toISOString().slice(0, 19).replace("T", " ");
   const sql = `UPDATE Sessions SET TimeLastUsed = ?, UserAgentLastSeen = ?, IPLastSeen = ? WHERE Cookie = ?`;
-  await pool.query(sql, [datetime, req.headers["user-agent"], req.ip, cookie]);
+  let ip;
+  if (process.env.PROXIED == "true") {
+    ip = req.headers["x-forwarded-for"];
+  } else {
+    ip = req.ip;
+  }
+  await pool.query(sql, [datetime, req.headers["user-agent"], ip, cookie]);
 
   if (result.length == 0) {
     return null;
@@ -174,6 +185,11 @@ function SendEmail(Recipient, Subject, Content) {
 function ValidateEmail(email) {
   const re = /\S+@\S+\.\S+/;
   return re.test(email);
+}
+
+function StandardChars(String) {
+  const re = /^[a-zA-Z0-9 _-]+$/;
+  return re.test(String);
 }
 
 async function CloudflareTurnStyle(token) {
@@ -251,7 +267,7 @@ app.get("/myAccount", async (req, res) => {
     Logs(req, 302, StartTime);
   } else {
     let [Sessions] = await pool.query(
-      "SELECT ID,TimeCreated,TimeLastUsed,IPLastSeen,IPCreatedWith,UserAgentCreatedWith,UserAgentLastSeen FROM Sessions WHERE UserID = ? ORDER BY TimeLastUsed DESC LIMIT 5",
+      "SELECT ID,TimeCreated,TimeLastUsed FROM Sessions WHERE UserID = ? ORDER BY TimeLastUsed DESC LIMIT 5",
       [UserID]
     );
     const [CurrentSession] = await pool.query(
@@ -262,17 +278,6 @@ app.get("/myAccount", async (req, res) => {
     Sessions.forEach((session) => {
       if (session.ID == CurrentSession[0].ID) {
         session.CurrentSession = "(Current Session)";
-      }
-      //Format the ip addresses
-      if (session.IPLastSeen == "::1") {
-        session.IPLastSeen = "Localhost";
-      } else {
-        session.IPLastSeen = session.IPLastSeen.replace("::ffff:", "");
-      }
-      if (session.IPCreatedWith == "::1") {
-        session.IPCreatedWith = "Localhost";
-      } else {
-        session.IPCreatedWith = session.IPCreatedWith.replace("::ffff:", "");
       }
       session.TimeCreated = session.TimeCreated.toLocaleString("en-GB", {
         day: "numeric",
@@ -306,6 +311,7 @@ app.get("/myAccount", async (req, res) => {
 //API responses
 //General
 app.get("/api/projects", async (req, res) => {
+  //This function is still needed for the management pages
   const StartTime = new Date().getTime();
   const cookie = req.cookies;
   let sql;
@@ -321,40 +327,48 @@ app.get("/api/projects", async (req, res) => {
 
 app.get("/projects/*", async (req, res) => {
   const StartTime = new Date().getTime();
-  let project = req.path.split("/")[2];
+  let project = req.path.split("/");
+  project.shift();
+  project.shift();
+  project = project.join("/");
   project = project.replaceAll("-", " ");
   const cookies = req.cookies;
-  let sql = `SELECT ID,Time,Title,Appetizer,Content,Likes FROM Projects WHERE Title = ? AND Status = 1`;
+  let sql;
+  //This check is still used on the management pages to show all articles
+  if (await Authorised(cookies["Auth"], pool)) {
+    sql = `SELECT ID,Time,Title,Appetizer,Content,Likes FROM Projects WHERE Title = ?`;
+  } else {
+    sql = `SELECT ID,Time,Title,Appetizer,Content,Likes FROM Projects WHERE Title = ? AND Status = 1`;
+  }
   const [result] = await pool.query(sql, [project]);
   if (result.length == 0) {
     res.sendFile(__dirname + "/Pages/404.html");
     Logs(req, 404, StartTime);
     return;
   }
-  const UserID = await GetUserID(cookies["Auth"], req);
-  sql = `SELECT count(*) FROM projectLikes WHERE UserID = ? AND Project = ?`;
-  const [liked] = await pool.query(sql, [UserID, result[0].ID]);
-  if (liked[0]["count(*)"] == 1) {
-    result[0].Liked = true;
-  } else {
-    result[0].Liked = false;
-  }
-  sql = `SELECT Users.Username,Comments.Content,Comments.Likes,Comments.Unique_id,ProfilePicture FROM Comments,Users WHERE Comments.UserID=Users.ID AND Project = ? ORDER BY FIELD(Unique_id, ?) DESC, Likes DESC`;
-  let [comments] = await pool.query(sql, [project, req.cookies.comment]);
-
-  //If the user is logged in then check if they liked the comment
-  if ((await GetUserID(req.cookies["Auth"], req)) != null) {
-    const UserID = await GetUserID(req.cookies["Auth"], req);
-    for (const comment of result) {
-      sql = `SELECT count(*) FROM commentLikes WHERE UserID = ? AND Unique_id = ?`;
-      const [liked] = await pool.query(sql, [UserID, comment.Unique_id]);
-      if (liked[0]["count(*)"] == 1) {
-        comment.Liked = true;
-      } else {
-        comment.Liked = false;
-      }
+  const [projectID] = await pool.query(
+    "SELECT ID FROM Projects WHERE Title = ?",
+    [project]
+  );
+  const UserID = await GetUserID(req.cookies.Auth, req);
+  sql = `SELECT Users.Username,Users.Sudo,Comments.Content,Comments.Likes,Comments.Unique_id,ProfilePicture,Comments.Time FROM Comments,Users WHERE Comments.UserID=Users.ID AND Project = ? ORDER BY Likes DESC`;
+  let [comments] = await pool.query(sql, [projectID[0].ID]);
+  //If a user is sudo then append 👑 to their username
+  comments.forEach((comment) => {
+    if (comment.Sudo == 1) {
+      comment.Username = "👑 " + comment.Username + " 👑";
+      delete comment.Sudo;
     }
-  }
+    //Change the time to a more readable format
+    comment.Time = comment.Time.toLocaleString("en-GB", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  });
+
   date = new Date(result[0].Time);
   date = date.toLocaleString("en-GB", {
     day: "numeric",
@@ -368,7 +382,6 @@ app.get("/projects/*", async (req, res) => {
     Appetizer: result[0].Appetizer,
     Time: date,
     Likes: result[0].Likes,
-    Liked: result[0].Liked,
     Comments: comments,
   });
   Logs(req, 200, StartTime);
@@ -383,11 +396,22 @@ app.get("/photos/:photo", (req, res) => {
 
 app.get("/api/projects/:project", async (req, res) => {
   const StartTime = new Date().getTime();
+  if ((await Authorised(req.cookies["Auth"], pool)) == false) {
+    res.sendStatus(401);
+    Logs(req, 401, StartTime);
+    return;
+  }
   let project = req.params.project;
   project = project.replaceAll("-", " ");
   const cookies = req.cookies;
-  let sql = `SELECT ID,Time,Title,Appetizer,Content,Likes FROM Projects WHERE Title = ? AND Status = 1`;
+  let sql = `SELECT ID,Time,Title,Appetizer,Content,Likes FROM Projects WHERE Title = ?`;
   const [result] = await pool.query(sql, [project]);
+  if (result.length == 0) {
+    res.sendStatus(404);
+    Logs(req, 404, StartTime);
+    return;
+  }
+  //No need to check if the user has a valid session as they are already authorised
   const UserID = await GetUserID(cookies["Auth"], req);
   sql = `SELECT count(*) FROM projectLikes WHERE UserID = ? AND Project = ?`;
   const [liked] = await pool.query(sql, [UserID, result[0].ID]);
@@ -397,13 +421,14 @@ app.get("/api/projects/:project", async (req, res) => {
     result[0].Liked = false;
   }
   res.send(result);
-  Logs(req, 200);
+  Logs(req, 200, StartTime);
 });
 
 //Likes
 app.get("/api/projects/:project/like", LikeLimit, async (req, res) => {
   //Check to see if the request can be dropped
   const StartTime = new Date().getTime();
+  //Validate the data to check for empty values
   if (
     req.params.project == "" ||
     req.params.project == null ||
@@ -415,7 +440,13 @@ app.get("/api/projects/:project/like", LikeLimit, async (req, res) => {
   }
   let project = req.params.project;
   project = project.replaceAll("-", " ");
+  //Check to see if the user is logged in
   let UserID = await GetUserID(req.cookies["Auth"], req);
+  if (UserID == null) {
+    res.sendStatus(401);
+    Logs(req, 401, StartTime);
+    return;
+  }
   //Get the project ID
   let sql = `SELECT ID FROM Projects WHERE Title = ?`;
   const [result] = await pool.query(sql, [project]);
@@ -457,6 +488,13 @@ app.post("/api/projects/:project/comment", CommentLimit, async (req, res) => {
     Logs(req, 400, StartTime);
     return;
   }
+  let commentVar = req.body.comment;
+
+  if (commentVar.length > 400) {
+    res.sendStatus(400);
+    Logs(req, 400, StartTime);
+    return;
+  }
   if (req.body.comment == null || req.params.project == null) {
     res.sendStatus(400);
     Logs(req, 400, StartTime);
@@ -469,8 +507,10 @@ app.post("/api/projects/:project/comment", CommentLimit, async (req, res) => {
   }
   let project = req.params.project;
   project = project.replaceAll("-", " ");
+  [project] = await pool.query(`SELECT ID FROM Projects WHERE Title = ?`, [
+    project,
+  ]);
   let comment = req.body.comment;
-  comment = comment.replaceAll('"', '""');
   //Get Current time as datetime
   const date = new Date();
   const datetime = date.toISOString().slice(0, 19).replace("T", " ");
@@ -496,7 +536,7 @@ app.post("/api/projects/:project/comment", CommentLimit, async (req, res) => {
     return;
   }
   const sql = `INSERT INTO Comments (Project,UserID,Content,Time,Likes,Unique_id) VALUES (?, ?, ?, ?, ?, ?)`;
-  const values = [project, UserID, comment, datetime, 0, id];
+  const values = [project[0].ID, UserID, comment, datetime, 0, id];
   pool.query(sql, values);
   res.sendStatus(204);
   Logs(req, 204, StartTime);
@@ -505,6 +545,11 @@ app.post("/api/projects/:project/comment", CommentLimit, async (req, res) => {
 app.get("/api/projects/:project/comments", async (req, res) => {
   const StartTime = new Date().getTime();
   //Get the comments for the project
+  if ((await Authorised(req.cookies["Auth"], req)) == false) {
+    res.sendStatus(401);
+    Logs(req, 401, StartTime);
+    return;
+  }
   let project = req.params.project;
   project = project.replaceAll("-", " ");
   let sql = `SELECT UserID,Content,Likes,Unique_id FROM Comments Where Project = ? ORDER BY FIELD(Unique_id, ?) DESC, Likes DESC`;
@@ -535,6 +580,7 @@ app.get("/api/projects/:project/comments", async (req, res) => {
 
 //Comment likes
 app.get("/api/comments/:id/like", async (req, res) => {
+  const StartTime = new Date().getTime();
   //Check to see if the request can be dropped
   if (
     req.params.id == "" ||
@@ -548,6 +594,11 @@ app.get("/api/comments/:id/like", async (req, res) => {
   let id = req.params.id;
   id = id.replaceAll("-", " ");
   let UserID = await GetUserID(req.cookies["Auth"], req);
+  if (UserID == null) {
+    res.sendStatus(401);
+    Logs(req, 401, StartTime);
+    return;
+  }
   //Check to see if the user has liked the project
   sql = `SELECT count(*) FROM commentLikes WHERE UserID = ? AND Unique_id = ?`;
   const [liked] = await pool.query(sql, [UserID, id]);
@@ -563,7 +614,7 @@ app.get("/api/comments/:id/like", async (req, res) => {
       [id]
     );
     res.send({ Status: count[0]["count(*)"] });
-    Logs(req, 200);
+    Logs(req, 200, StartTime);
   }
   if (liked[0]["count(*)"] < 1) {
     //Add the like
@@ -577,7 +628,7 @@ app.get("/api/comments/:id/like", async (req, res) => {
       [id]
     );
     res.send({ Status: count[0]["count(*)"] });
-    Logs(req, 200);
+    Logs(req, 200, StartTime);
   }
 });
 
@@ -630,6 +681,7 @@ app.post("/api/projects/new", async (req, res) => {
 });
 
 app.post("/api/projects/:id/edit", async (req, res) => {
+  const StartTime = new Date().getTime();
   const password = req.cookies.Auth;
 
   if (await Authorised(password, pool)) {
@@ -652,7 +704,7 @@ app.post("/api/projects/:id/edit", async (req, res) => {
     res.send("Successfully updated project");
   } else {
     res.sendStatus(403);
-    Logs(req, 403);
+    Logs(req, 403, StartTime);
   }
 });
 
@@ -685,7 +737,7 @@ app.get("/api/showImages", async (req, res) => {
   const StartTime = new Date().getTime();
   const Cookies = req.cookies;
   if (await Authorised(Cookies["Auth"], pool)) {
-    const files = fs.readdirSync(__dirname + "/Photos");
+    const files = fs.readdirSync(process.env.ArticlePhotosPath);
     res.send(files);
     Logs(req, 200, StartTime);
   } else {
@@ -720,27 +772,54 @@ app.post("/api/user/create", async (req, res) => {
   const StartTime = new Date().getTime();
   const username = req.body.username;
   const password = req.body.password;
+  const confirmPassword = req.body.confirmPassword;
   const email = req.body.email;
+  //Validate the data
+  if (username.length < 3 || username.length > 16) {
+    res.send("Username must be at least 3-16 characters long");
+    Logs(req, 400, StartTime);
+    return;
+  } else if (password.length < 8 || password.length > 32) {
+    res.send("Password must be at least 8-32 characters long");
+    Logs(req, 400, StartTime);
+    return;
+  } else if (ValidateEmail(email) == false) {
+    res.send("Invalid email");
+    Logs(req, 400, StartTime);
+    return;
+  } else if (StandardChars(username) == false) {
+    res.send("Usename can only contain letters, numbers, spaces, - and _");
+    Logs(req, 400, StartTime);
+    return;
+  } else if (password != confirmPassword) {
+    res.send("Passwords do not match");
+    Logs(req, 400, StartTime);
+    return;
+  } else if (email.length > 254) {
+    res.send("Email is too long");
+    Logs(req, 400, StartTime);
+    return;
+  }
+  //Check if username is taken
+  let sql = `SELECT count(*) FROM Users WHERE Username = ?`;
+  let [result] = await pool.query(sql, [username]);
+  if (result[0]["count(*)"] > 0) {
+    res.send("Username is taken");
+    Logs(req, 400, StartTime);
+    return;
+  }
+
   const cfTurnStyle = req.body["cf-turnstile-response"];
   CloudflareTurnStyle(cfTurnStyle).then(async (verdict) => {
     if (verdict == true) {
-      //Check for the username existing
-      let sql = "SELECT count(*) FROM Users WHERE Username = ?";
-      const [result] = await pool.query(sql, [username]);
-      if (result[0]["count(*)"] == 0) {
-        //check if username exists
-        const passwordHash = crypto
-          .createHash("sha256")
-          .update(password)
-          .digest("hex");
-        sql = `INSERT INTO Users (Username, Password, Email) VALUES (?, ?, ?)`;
-        pool.query(sql, [username, passwordHash, email]);
-        res.send("Account created");
-        Logs(req, 200, StartTime);
-      } else {
-        res.send("Username already exists");
-        Logs(req, 409, StartTime);
-      }
+      const passwordHash = crypto
+        .createHash("sha256")
+        .update(password)
+        .digest("hex");
+      sql = `INSERT INTO Users (Username, Password, Email) VALUES (?, ?, ?)`;
+      pool.query(sql, [username, passwordHash, email]);
+      res.send("Account created");
+      Logs(req, 200, StartTime);
     } else {
       res.send("Suspected bot");
       Logs(req, 403, StartTime);
@@ -951,3 +1030,29 @@ app.get("/api/avatar/:pfp", async (req, res) => {
 app.listen(process.env.PORT, () => {
   console.log(`Server is running on http://localhost:${process.env.PORT}`);
 });
+
+//Interval
+async function RevalidateLikes() {
+  let sql = "SELECT Unique_ID FROM Comments";
+  let [result] = await pool.query(sql);
+  for (i = 0; i < result.length; i++) {
+    sql = "SELECT count(*) FROM Comments WHERE Unique_ID = ?";
+    let [count] = await pool.query(sql, [result[i].Unique_ID]);
+    //Write this value to the database
+    sql = "UPDATE Comments SET Likes = ? WHERE Unique_ID = ?";
+    pool.query(sql, [count[0]["count(*)"], result[i].Unique_ID]);
+  }
+
+  sql = "SELECT ID FROM Projects";
+  [result] = await pool.query(sql);
+  for (i = 0; i < result.length; i++) {
+    sql = "SELECT count(*) FROM projectLikes WHERE Project = ?";
+    let [count] = await pool.query(sql, [result[i].ID]);
+    //Write this value to the database#
+    sql = "UPDATE Projects SET Likes = ? WHERE ID = ?";
+    pool.query(sql, [count[0]["count(*)"], result[i].ID]);
+  }
+}
+
+RevalidateLikes();
+setInterval(RevalidateLikes, 1000 * 60 * 60); //Checks every hour

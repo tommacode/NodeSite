@@ -15,13 +15,19 @@ fetch("/api/user")
           '<li><a class="listLink" href="/management">Management</a></li>';
       }
     } else {
-      document.getElementById("likeBtn").disabled = true;
-      document.querySelector(".borders h3").style.display = "none";
-      document.querySelector(".borders form").style.display = "none";
-      document.getElementById(
-        "commentMessage"
-      ).innerHTML = `<a class="listLink" href="/login">Login</a> to comment`;
+      if (window.location.href.includes("/projects/")) {
+        document.getElementById("likeBtn").disabled = true;
+        document.querySelector(".borders h3").style.display = "none";
+        document.querySelector(".borders form").style.display = "none";
+        document.getElementById(
+          "commentMessage"
+        ).innerHTML = `<a class="listLink" href="/login">Login</a> to comment`;
+        document.querySelectorAll("#comments button").forEach((btn) => {
+          btn.disabled = true;
+        });
+      }
     }
+
     //If the href is the /myAccount page then change the title of the page to be Welcome username
     if (
       window.location.href.includes("/myAccount") ||

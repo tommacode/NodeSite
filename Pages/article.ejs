@@ -1,6 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
+    <script
+      src="https://challenges.cloudflare.com/turnstile/v0/api.js"
+      async
+      defer
+    ></script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -11,7 +16,7 @@
     <meta charset="UTF-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Article</title>
+    <title><%= Title %></title>
     <!--Meta Tags-->
     <meta name="twitter:card" content="summary" />
     <meta name="twitter:domain" content="tomblake.me" />
@@ -27,9 +32,9 @@
       itemprop="description"
       content="Read the full article on https://tomblake.me/articles"
     />
-    <link rel="stylesheet" href="../css.css" />
+    <link rel="stylesheet" href="../../../css.css" />
   </head>
-  <body onload="LoadComments()">
+  <body>
     <div id="LoadingScreen">
       <div class="center" id="dots"></div>
       <p class="center" id="loadingText">Loading epic content</p>
@@ -50,7 +55,7 @@
       </header>
       <!--Project Thumbnails-->
       <button onclick="like(ArticleLikeTimeArray)" id="likeBtn" class="likeBtn">
-        Likes: 0
+        Likes: <%= Likes %>
       </button>
       <p id="likeMessage"></p>
       <div id="projects">
@@ -63,13 +68,14 @@
       </div>
       <div class="borders" id="WriteComment">
         <h3 id="commentMessage">Write a comment:</h3>
-        <form>
+        <form class="comment">
           <textarea
             style="width: 45vw"
             id="comment"
             placeholder="Comment*"
+            oninput="CommentCharCount()"
           ></textarea>
-          <br />
+          <p id="CommentChar">0/400</p>
           <button type="button" onclick="addComment()">Add Comment</button>
         </form>
         <p id="response"></p>
@@ -84,9 +90,15 @@
               class="CommentProfilePicture"
               src="/api/avatar/<%= Comments[i].ProfilePicture %>"
               alt="Profile Picture"
+              style="float: left"
             />
-            <h4><%= Comments[i].Username %></h4>
-            <p><%= Comments[i].Content %></p>
+            <p style="float: right"><%= Comments[i].Time %></p>
+            <h4 style="float: left"><%= Comments[i].Username %></h4>
+            <br />
+            <p style="float: right"></p>
+            <p style="word-wrap: break-word; max-width: 80%">
+              <%= Comments[i].Content %>
+            </p>
             <button
               id="<%= Comments[i].Unique_id %>"
               onclick="LikeComment('<%= Comments[i].Unique_id %>')"
@@ -121,19 +133,21 @@
         </ul>
       </div>
     </div>
-    <p id="Liked" class="hidden"><%= Liked %></p>
-    <p class="hidden" id="Likes"><%= Likes %></p>
     <script>
+      function CommentCharCount() {
+        var comment = document.getElementById("comment").value;
+        var charCount = comment.length;
+        document.getElementById("CommentChar").innerHTML = charCount + "/400";
+        return charCount;
+      }
       //Wait until the content is loaded
       function HideLoadingScreen() {
         document.getElementById("content").style.display = "block";
         document.getElementById("LoadingScreen").style.display = "none";
       }
-      let likeValue = document.getElementById("Liked").innerHTML;
-      //Load Content
-      let Likes = document.getElementById("Likes").innerHTML;
-
-      document.getElementById("likeBtn").innerHTML = `Likes: ${Likes}`;
+      let Likes = document.getElementById("likeBtn").innerHTML;
+      Likes = Likes.replace("Likes: ", "");
+      Likes = parseInt(Likes);
       HideLoadingScreen();
       ArticleLikeTimeArray = [];
       function ArticleRateLimit(ArticleLikeTimeArray) {
@@ -185,6 +199,12 @@
       }
       //Post comment to the server
       function addComment() {
+        //Disable the normal submit
+        if (CommentCharCount() > 400) {
+          document.getElementById("response").innerHTML =
+            "<b>Comment is too long!</b>";
+          return;
+        }
         var comment = document.getElementById("comment").value;
         //Clear all boxes
         document.getElementById("comment").value = "";
@@ -206,16 +226,25 @@
           }
           if (this.readyState == 4 && this.status == 400) {
             document.getElementById("response").innerHTML =
-              "<b>Error posting comment (May contain script tags)!</b>";
+              "<b>Error posting comment</b>";
           }
           if (this.readyState == 4 && this.status == 429) {
             document.getElementById("response").innerHTML =
-              "<b>You have posted too many comments in too little time</b>";
+              "<b>You have posted too many comments</b>";
+          }
+          if (this.readyState == 4 && this.status == 403) {
+            document.getElementById("response").innerHTML =
+              "<b>Failed Bot verification</b>";
           }
           //Wait and then clear the response
           setTimeout(function () {
+            if (
+              document.getElementById("response").innerHTML ==
+              "<b>Comment Posted!</b>"
+            ) {
+              location.reload();
+            }
             document.getElementById("response").innerHTML = "";
-            location.reload();
           }, 2000);
         };
       }

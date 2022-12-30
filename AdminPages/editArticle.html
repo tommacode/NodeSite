@@ -97,8 +97,10 @@
       <script>
         function LoadOriginal() {
           //Get url parameters
-          var urlParams = new URLSearchParams(window.location.search);
-          var title = urlParams.get("title");
+          let url = window.location.href;
+          //Get the title parameter
+          let title = url.split("?")[1].split("=")[1];
+          title = title.replace("%20", "-");
           fetch(`/api/projects/${title}`)
             .then((response) => response.json())
             .then((data) => {

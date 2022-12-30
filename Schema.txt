@@ -7,7 +7,7 @@ create table Logs(
     Method VARCHAR(8),
     Path VARCHAR(255),
     StatusCode INT,
-    Username VARCHAR(255)
+    User INT
 );
 
 create table Projects(
@@ -25,7 +25,7 @@ create table Projects(
 create table Comments(
     ID INT AUTO_INCREMENT PRIMARY KEY,
     Time TIMESTAMP,
-    Project VARCHAR(128),
+    Project INT,
     UserID INT,
     Content TEXT,
     Likes INT,
@@ -65,14 +65,24 @@ create table commentLikes(
 );
 
 
-Make an account sudo
+Essential database actions that can't be done in the ui
 
+Make a user sudo
 UPDATE Users SET Sudo = 1 WHERE Username = '';
 
+Make a user unsudo
+UPDATE Users SET Sudo = 0 WHERE Username = '';
+
+Delete a user account with all the data
+DELETE FROM Sessions WHERE UserID = (SELECT ID FROM Users WHERE Username = '');
+DELETE FROM Comments WHERE UserID = (SELECT ID FROM Users WHERE Username = '');
+DELETE FROM projectLikes WHERE UserID = (SELECT ID FROM Users WHERE Username = '');
+DELETE FROM commentLikes WHERE UserID = (SELECT ID FROM Users WHERE Username = '');
+DELETE FROM Users WHERE Username = '';
 
 
 All changes to the tables
 
-ALTER TABLE Users ADD ProfilePicture VARCHAR(255);
+ALTER TABLE Logs ADD COLUMN User INT DEFAULT 0;
 
-ALTER TABLE Users MODIFY ProfilePicture VARCHAR(255) DEFAULT '0';
+ALTER TABLE Comments MODIFY Project INT;
