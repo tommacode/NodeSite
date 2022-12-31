@@ -105,6 +105,14 @@
             >
               Likes: <%= Comments[i].Likes %>
             </button>
+            <% if (Comments[i].ID == UserID || SudoUser == true) { %>
+            <button
+              id="<%= Comments[i].Unique_id %>"
+              onclick="DeleteComment('<%= Comments[i].Unique_id %>')"
+            >
+              Delete
+            </button>
+            <% } %>
           </div>
           <% } %>
         </div>
@@ -234,7 +242,7 @@
           }
           if (this.readyState == 4 && this.status == 403) {
             document.getElementById("response").innerHTML =
-              "<b>Failed Bot verification</b>";
+              "<b>Your account is not allowed to post comments</b>";
           }
           //Wait and then clear the response
           setTimeout(function () {
@@ -283,6 +291,19 @@
             }
           };
         }
+      }
+      function DeleteComment(id) {
+        fetch(`/api/comments/delete/${id}`, {
+          method: "GET",
+        })
+          .then((response) => {
+            if (response.status == 204) {
+              location.reload();
+            }
+          })
+          .catch((error) => {
+            console.log(error);
+          });
       }
     </script>
   </body>

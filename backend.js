@@ -59,7 +59,7 @@ const LikeLimit = rateLimit({
 
 const pool = mysql
   .createPool({
-    connectionLimit: 10,
+    connectionLimit: 50,
     host: process.env.DB_IP,
     user: process.env.DB_User,
     password: process.env.DB_Password,
@@ -108,8 +108,7 @@ async function Logs(req, StatusCode, StartTime) {
   }
 
   console.log(
-    `${datetime} | ${ip} | ${forwardedfor} | ${useragent} | ${method} | ${path} | ${StatusCode} | ${Username} | ${
-      FinishTime - StartTime
+    `${datetime} | ${ip} | ${forwardedfor} | ${useragent} | ${method} | ${path} | ${StatusCode} | ${Username} | ${FinishTime - StartTime
     }ms`
   );
   sql = `INSERT INTO Logs (Time, ip, forwardedfor, useragent, method, path, statuscode, User) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
@@ -209,6 +208,41 @@ async function CloudflareTurnStyle(token) {
   return outcome.success;
 }
 
+async function ModifyProfilePictureCheck(UserID, pool) {
+  const sql = `SELECT ModifyProfilePicture FROM Users WHERE ID = ?`;
+  const [result] = await pool.query(sql, [UserID]);
+  if (result.length == 0) {
+    return false;
+  }
+  if (result[0].ModifyProfilePicture == 1) {
+    return true;
+  }
+  return false;
+}
+
+async function WriteComments(UserID, pool) {
+  const sql = `SELECT WriteComments FROM Users WHERE ID = ?`;
+  const [result] = await pool.query(sql, [UserID]);
+  if (result.length == 0) {
+    return false;
+  }
+  if (result[0].WriteComments == 1) {
+    return true;
+  }
+  return false;
+}
+
+async function AddLikes(UserID, pool) {
+  const sql = `SELECT AddLikes FROM Users WHERE ID = ?`;
+  const [result] = await pool.query(sql, [UserID]);
+  if (result.length == 0) {
+    return false;
+  }
+  if (result[0].AddLikes == 1) {
+    return true;
+  }
+  return false;
+}
 //HTML responses
 app.get("/", (req, res) => {
   const StartTime = new Date().getTime();
@@ -350,8 +384,8 @@ app.get("/projects/*", async (req, res) => {
     "SELECT ID FROM Projects WHERE Title = ?",
     [project]
   );
-  const UserID = await GetUserID(req.cookies.Auth, req);
-  sql = `SELECT Users.Username,Users.Sudo,Comments.Content,Comments.Likes,Comments.Unique_id,ProfilePicture,Comments.Time FROM Comments,Users WHERE Comments.UserID=Users.ID AND Project = ? ORDER BY Likes DESC`;
+  let UserID = await GetUserID(req.cookies.Auth, req);
+  sql = `SELECT Users.Username,Users.Sudo,Comments.Content,Comments.Likes,Comments.Unique_id,ProfilePicture,Comments.Time,Users.ID FROM Comments,Users WHERE Comments.UserID=Users.ID AND Project = ? ORDER BY Likes DESC`;
   let [comments] = await pool.query(sql, [projectID[0].ID]);
   //If a user is sudo then append 👑 to their username
   comments.forEach((comment) => {
@@ -376,6 +410,16 @@ app.get("/projects/*", async (req, res) => {
     year: "numeric",
   });
 
+  if (UserID == null) {
+    UserID = 0;
+  }
+
+  if (await Authorised(req.cookies.Auth, pool) == true) {
+    SudoUser = true;
+  } else {
+    SudoUser = false;
+  }
+
   res.render(__dirname + "/Pages/article.ejs", {
     Title: result[0].Title,
     Content: result[0].Content,
@@ -383,6 +427,8 @@ app.get("/projects/*", async (req, res) => {
     Time: date,
     Likes: result[0].Likes,
     Comments: comments,
+    UserID: UserID,
+    SudoUser: SudoUser,
   });
   Logs(req, 200, StartTime);
 });
@@ -483,6 +529,19 @@ app.get("/api/projects/:project/like", LikeLimit, async (req, res) => {
 //Comments
 app.post("/api/projects/:project/comment", CommentLimit, async (req, res) => {
   const StartTime = new Date().getTime();
+  const UserID = await GetUserID(req.cookies["Auth"], req);
+  if (UserID == null) {
+    res.sendStatus(401);
+    Logs(req, 401, StartTime);
+    return;
+  }
+
+  if (await WriteComments(UserID, pool) == false) {
+    res.sendStatus(403);
+    Logs(req, 403, StartTime);
+    return;
+  }
+
   if (req.body.comment == "" || req.params.project == "") {
     res.sendStatus(400);
     Logs(req, 400, StartTime);
@@ -518,23 +577,6 @@ app.post("/api/projects/:project/comment", CommentLimit, async (req, res) => {
   const id =
     Math.random().toString(36).substring(2, 15) +
     Math.random().toString(36).substring(2, 15);
-
-  const UserID = await GetUserID(req.cookies["Auth"], req);
-  if (UserID == null) {
-    res.sendStatus(401);
-    Logs(req, 401, StartTime);
-    return;
-  }
-  if (UserID == undefined) {
-    res.sendStatus(401);
-    Logs(req, 401, StartTime);
-    return;
-  }
-  if (UserID.length == 0) {
-    res.sendStatus(401);
-    Logs(req, 401, StartTime);
-    return;
-  }
   const sql = `INSERT INTO Comments (Project,UserID,Content,Time,Likes,Unique_id) VALUES (?, ?, ?, ?, ?, ?)`;
   const values = [project[0].ID, UserID, comment, datetime, 0, id];
   pool.query(sql, values);
@@ -577,6 +619,39 @@ app.get("/api/projects/:project/comments", async (req, res) => {
   res.send(result);
   Logs(req, 200, StartTime);
 });
+
+app.get('/api/comments/delete/:id', async (req, res) => {
+  const StartTime = new Date().getTime();
+  if (req.params.id == "" || req.params.id == null || req.params.id == undefined) {
+    res.sendStatus(400);
+    Logs(req, 400, StartTime);
+    return;
+  }
+  let id = req.params.id;
+  id = id.replaceAll("-", " ");
+  let UserID = await GetUserID(req.cookies["Auth"], req);
+  if (UserID == null) {
+    res.sendStatus(401);
+    Logs(req, 401, StartTime);
+    return;
+  }
+  let sql = `SELECT UserID FROM Comments WHERE Unique_id = ?`;
+  let [result] = await pool.query(sql, [id]);
+  if (result.length == 0) {
+    res.sendStatus(404);
+    Logs(req, 404, StartTime);
+    return;
+  }
+  if (result[0].UserID != UserID && await Authorised(req.cookies["Auth"], pool) == false) {
+    res.sendStatus(401);
+    Logs(req, 401, StartTime);
+    return;
+  }
+  sql = `DELETE FROM Comments WHERE Unique_id = ?`;
+  pool.query(sql, [id]);
+  res.sendStatus(204);
+  Logs(req, 204, StartTime);
+})
 
 //Comment likes
 app.get("/api/comments/:id/like", async (req, res) => {
@@ -718,6 +793,151 @@ app.get("/management", async (req, res) => {
   } else {
     res.redirect("/login");
     Logs(req, 302, StartTime);
+  }
+});
+
+app.get('/management/manageUsers', async (req, res) => {
+  const StartTime = new Date().getTime();
+  const Cookies = req.cookies;
+  if (await Authorised(Cookies["Auth"], pool)) {
+    let sql = `SELECT Username, Email, id, ProfilePicture, ModifyProfilePicture, WriteComments, Sudo, Time FROM Users ORDER BY Sudo DESC`;
+    let [Users] = await pool.query(sql);
+
+    for (i = 0; i < Users.length; i++) {
+      let sql = `SELECT count(*) FROM Sessions WHERE UserID = ?`;
+      let [count] = await pool.query(sql, [Users[i].id]);
+      Users[i].Sessions = count[0]["count(*)"];
+
+      sql = `SELECT count(*) FROM Comments WHERE UserID = ?`;
+      [count] = await pool.query(sql, [Users[i].id]);
+      Users[i].Comments = count[0]["count(*)"];
+
+      sql = `SELECT count(*) FROM projectLikes WHERE UserID = ?`;
+      [count] = await pool.query(sql, [Users[i].id]);
+      Users[i].Likes = count[0]["count(*)"];
+
+      //Make the sign up to locale string
+      Users[i].Time = Users[i].Time.toLocaleString('en-GB', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+        hour: 'numeric',
+        minute: 'numeric',
+        second: 'numeric'
+      });
+
+      //Change 0 and 1 to true and false
+      if (Users[i].ModifyProfilePicture == 1) {
+        Users[i].ModifyProfilePicture = 'True';
+      }
+      else {
+        Users[i].ModifyProfilePicture = 'False';
+      }
+      if (Users[i].WriteComments == 1) {
+        Users[i].WriteComments = 'True';
+      }
+      else {
+        Users[i].WriteComments = 'False';
+      }
+      if (Users[i].AddLikes == 1) {
+        Users[i].AddLikes = 'True';
+      }
+      else {
+        Users[i].AddLikes = 'False';
+      }
+      if (Users[i].Sudo == 1) {
+        Users[i].Username = "👑 " + Users[i].Username + " 👑";
+      }
+    }
+    res.render(__dirname + "/AdminPages/manageUsers.ejs", { Users: Users });
+    Logs(req, 200, StartTime);
+  } else {
+    res.redirect("/login");
+    Logs(req, 302, StartTime);
+  }
+})
+
+app.get('/api/management/ModifyProfilePicture/:id', async (req, res) => {
+  const StartTime = new Date().getTime();
+  const Cookies = req.cookies;
+  if (await Authorised(Cookies["Auth"], pool)) {
+    let id = req.params.id;
+    let sql = `SELECT ModifyProfilePicture FROM Users WHERE id = ?`;
+    let [result] = await pool.query(sql, [id]);
+    if (result[0].ModifyProfilePicture == 1) {
+      sql = `UPDATE Users SET ModifyProfilePicture = 0 WHERE id = ?`;
+      await pool.query(sql, [id]);
+      res.send({ status: 'Success', mode: 'False' });
+      Logs(req, 200, StartTime);
+    } else {
+      sql = `UPDATE Users SET ModifyProfilePicture = 1 WHERE id = ?`;
+      await pool.query(sql, [id]);
+      res.send({ status: 'Success', mode: 'True' });
+      Logs(req, 200, StartTime);
+    }
+  }
+});
+
+app.get('/api/management/WriteComments/:id', async (req, res) => {
+  const StartTime = new Date().getTime();
+  const Cookies = req.cookies;
+  if (await Authorised(Cookies["Auth"], pool)) {
+    let id = req.params.id;
+    let sql = `SELECT WriteComments FROM Users WHERE id = ?`;
+    let [result] = await pool.query(sql, [id])
+    if (result[0].WriteComments == 1) {
+      sql = `UPDATE Users SET WriteComments = 0 WHERE id = ?`;
+      await pool.query(sql, [id]);
+      res.send({ status: 'Success', mode: 'False' });
+      Logs(req, 200, StartTime);
+    } else {
+      sql = `UPDATE Users SET WriteComments = 1 WHERE id = ?`;
+      await pool.query(sql, [id]);
+      res.send({ status: 'Success', mode: 'True' });
+      Logs(req, 200, StartTime);
+    }
+  }
+});
+
+app.get('/api/management/DeletePfp/:id', async (req, res) => {
+  const StartTime = new Date().getTime();
+  const Cookies = req.cookies;
+  if (await Authorised(Cookies["Auth"], pool)) {
+    let id = req.params.id;
+    let sql = `SELECT ProfilePicture FROM Users WHERE id = ?`;
+    let [result] = await pool.query(sql, [id]);
+    if (result[0].ProfilePicture != "0") {
+      fs.unlinkSync(process.env.AvatarPath + result[0].ProfilePicture + ".png");
+      sql = `UPDATE Users SET ProfilePicture = 0 WHERE id = ?`;
+      pool.query(sql, [id]);
+      res.sendStatus(200)
+      Logs(req, 200, StartTime);
+    }
+  } else {
+    res.sendStatus(400)
+    Logs(req, 400, StartTime);
+  }
+})
+
+
+app.get('/api/management/AddLikes/:id', async (req, res) => {
+  const StartTime = new Date().getTime();
+  const Cookies = req.cookies;
+  if (await Authorised(Cookies["Auth"], pool)) {
+    let id = req.params.id;
+    let sql = `SELECT AddLikes FROM Users WHERE id = ?`;
+    let [result] = await pool.query(sql, [id])
+    if (result[0].AddLikes == 1) {
+      sql = `UPDATE Users SET AddLikes = 0 WHERE id = ?`;
+      await pool.query(sql, [id]);
+      res.send({ status: 'Success', mode: 'False' });
+      Logs(req, 200, StartTime);
+    } else {
+      sql = `UPDATE Users SET AddLikes = 1 WHERE id = ?`;
+      await pool.query(sql, [id]);
+      res.send({ status: 'Success', mode: 'True' });
+      Logs(req, 200, StartTime);
+    }
   }
 });
 
@@ -882,7 +1102,7 @@ app.get("/api/user", async (req, res) => {
   let sql = `SELECT * FROM Sessions WHERE Cookie = ?`;
   let [result] = await pool.query(sql, [cookie]);
   if (result.length == 1) {
-    sql = `SELECT Username,Sudo FROM Users WHERE id = ?`;
+    sql = `SELECT Username,Sudo,ModifyProfilePicture,WriteComments FROM Users WHERE id = ?`;
     [result] = await pool.query(sql, [result[0].UserID]);
     res.send(result[0]);
     Logs(req, 200, StartTime);
@@ -937,6 +1157,12 @@ app.post("/api/upload/pfp", async (req, res) => {
     Logs(req, 403, StartTime);
     return;
   } else {
+    const UserID = await GetUserID(req.cookies["Auth"], req);
+    if (await ModifyProfilePictureCheck(UserID, pool) == false) {
+      res.send({ status: 'false', message: "Modifying your profile picture has been disabled on your account" });
+      Logs(req, 403, StartTime);
+      return;
+    }
     if (!req.files) {
       res.send({ status: false, message: "No file uploaded" });
       Logs(req, 400, StartTime);
@@ -963,7 +1189,6 @@ app.post("/api/upload/pfp", async (req, res) => {
     }
 
     //By here we have established the file is valid
-    const UserID = await GetUserID(req.cookies["Auth"], req);
     const [PFPID] = await pool.query(
       "SELECT ProfilePicture FROM Users WHERE ID = ?",
       [UserID]
@@ -1054,5 +1279,5 @@ async function RevalidateLikes() {
   }
 }
 
-RevalidateLikes();
-setInterval(RevalidateLikes, 1000 * 60 * 60); //Checks every hour
+//RevalidateLikes();
+//setInterval(RevalidateLikes, 1000 * 60 * 60); //Checks every hour

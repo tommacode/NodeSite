@@ -83,6 +83,7 @@ DELETE FROM Users WHERE Username = '';
 
 All changes to the tables
 
-ALTER TABLE Logs ADD COLUMN User INT DEFAULT 0;
+ALTER TABLE Users ADD COLUMN ModifyProfilePicture INT DEFAULT 1;
+ALTER TABLE Users ADD COLUMN WriteComments INT DEFAULT 1;
 
-ALTER TABLE Comments MODIFY Project INT;
+

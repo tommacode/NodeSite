@@ -14,6 +14,12 @@ fetch("/api/user")
         document.querySelector("nav ul").innerHTML +=
           '<li><a class="listLink" href="/management">Management</a></li>';
       }
+      if (location.href.includes('/projects/')) {
+        if (data.WriteComments == 0) {
+          document.querySelector(".comment").style.display = "none";
+          document.getElementById('commentMessage').innerHTML = "Posting comments has been disabled on your account"
+        }
+      }
     } else {
       if (window.location.href.includes("/projects/")) {
         document.getElementById("likeBtn").disabled = true;
@@ -39,5 +45,10 @@ fetch("/api/user")
     if (window.location.href.includes("/myAccount")) {
       document.querySelector("header h1").innerHTML =
         "Welcome,  " + data.Username;
+      if (data.ModifyProfilePicture == 0) {
+        //Get the children of the .Changepfp form
+        document.getElementById("Changepfp").style.display = "none";
+        document.getElementById('ChangepfpHeading').innerHTML = "Changing profile pictures has been disabled on your account"
+      }
     }
   });
