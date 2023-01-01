@@ -42,33 +42,67 @@
       </nav>
       <!--Big header to draw attention-->
       <header>
-        <h1>Manage Articles/Projects</h1>
+        <h1>Manage Users</h1>
       </header>
-        Reset All
-      </button>
+
       <div class="borders" id="Users">
         <h3>Users (<%= Users.length %>)</h3>
         <% for (let i = 0; i < Users.length; i++) { %>
-          <div class="borders">
-
-            <img
-              class="CommentProfilePicture"
-              src="/api/avatar/<%= Users[i].ProfilePicture %>"
-              alt="Profile Picture"
-              style="float: left"
-            />
-            <h3><%= Users[i].Username %></h3>
-            <p><strong>Account Created: </strong><%- Users[i].Time %></p>
-            <p><strong>Sessions:</strong> <%- Users[i].Sessions %> | <strong>Comments:</strong> <%- Users[i].Comments %> | <strong>Liked Projects:</strong> <%- Users[i].Likes %></p>
-            <button style="float: left;" onclick="DeletePfp('<%- Users[i].id %>')" class="clearBtn">Remove</button>
-            <button id="<%- Users[i].id %>ModifyProfilePicture" onclick="ModifyPFP('<%- Users[i].id %>')" class="clearBtn">Change Pfp: <%= Users[i].ModifyProfilePicture %></button>
-            <button id="<%- Users[i].id %>WriteComments" onclick="WriteComments('<%- Users[i].id %>')" class="clearBtn">Write Comments: <%= Users[i].WriteComments %></button>
-            <br>
-          </div>
+        <div class="borders">
+          <img
+            class="CommentProfilePicture"
+            src="/api/avatar/<%= Users[i].ProfilePicture %>"
+            alt="Profile Picture"
+            style="float: left; margin-bottom: 2vh; margin-top: 1vh"
+          />
+          <% if (Users[i].Locked == 'True') { %>
+          <h3 id="<%- Users[i].id %>"><%= Users[i].Username %> (Locked)</h3>
+          <% } else { %>
+          <h3 id="<%- Users[i].id %>"><%= Users[i].Username %></h3>
           <% } %>
+          <p>
+            <strong>Account Created: </strong><%- Users[i].Time %>
+            <br />
+            <strong>Last Used: </strong><%- Users[i].LastUsed %>
+          </p>
+          <p>
+            <strong>Sessions:</strong> <%- Users[i].Sessions %> |
+            <strong>Comments:</strong> <%- Users[i].Comments %> |
+            <strong>Liked Projects:</strong> <%- Users[i].Likes %>
+          </p>
+          <button
+            style="float: left"
+            onclick="DeletePfp('<%- Users[i].id %>')"
+            class="clearBtn"
+          >
+            Remove PFP
+          </button>
+          <button
+            id="<%- Users[i].id %>ModifyProfilePicture"
+            onclick="ModifyPFP('<%- Users[i].id %>')"
+            class="clearBtn"
+          >
+            Change Pfp: <%= Users[i].ModifyProfilePicture %>
+          </button>
+          <button
+            id="<%- Users[i].id %>WriteComments"
+            onclick="WriteComments('<%- Users[i].id %>')"
+            class="clearBtn"
+          >
+            Write Comments: <%= Users[i].WriteComments %>
+          </button>
+          <button
+            id="<%- Users[i].id %>LockAccount"
+            onclick="LockAccount('<%- Users[i].id %>')"
+            class="clearBtn"
+          >
+            Locked: <%= Users[i].Locked %>
+          </button>
+          <br />
+        </div>
+        <% } %>
       </div>
       <!--Project Thumbnails-->
-      <div id="Users"></div>
       <div id="footer">
         <h3>Footer</h3>
         <!--Links-->
@@ -95,38 +129,60 @@
     </div>
     <script>
       function ModifyPFP(ID) {
-        fetch('/api/management/ModifyProfilePicture/' + ID, {
-          method: 'GET',
+        fetch("/api/management/ModifyProfilePicture/" + ID, {
+          method: "GET",
         })
           .then((res) => res.json())
           .then((data) => {
             if (data.Error) {
-              alert(data.Error)
+              alert(data.Error);
             } else {
-              document.getElementById(ID + 'ModifyProfilePicture').innerHTML = 'Change Pfp: ' + data.mode
+              document.getElementById(ID + "ModifyProfilePicture").innerHTML =
+                "Change Pfp: " + data.mode;
             }
-          })
+          });
       }
       function WriteComments(ID) {
-        fetch('/api/management/WriteComments/' + ID, {
-          method: 'GET',
+        fetch("/api/management/WriteComments/" + ID, {
+          method: "GET",
         })
           .then((res) => res.json())
           .then((data) => {
             if (data.Error) {
-              alert(data.Error)
+              alert(data.Error);
             } else {
-              document.getElementById(ID + 'WriteComments').innerHTML = 'Write Comments: ' + data.mode
+              document.getElementById(ID + "WriteComments").innerHTML =
+                "Write Comments: " + data.mode;
             }
-          })
+          });
       }
       function DeletePfp(ID) {
-        fetch('/api/management/DeletePfp/' + ID, {
-          method: 'GET',
+        fetch("/api/management/DeletePfp/" + ID, {
+          method: "GET",
+        }).then((data) => {
+          location.reload();
+        });
+      }
+      function LockAccount(ID) {
+        fetch("/api/management/LockAccount/" + ID, {
+          method: "GET",
         })
+          .then((res) => res.json())
           .then((data) => {
-            location.reload()
-          })
+            if (data.Error) {
+              alert(data.Error);
+            } else {
+              document.getElementById(ID + "LockAccount").innerHTML =
+                "Locked: " + data.mode;
+              if (data.mode == "True") {
+                document.getElementById(ID).innerHTML += " (Locked)";
+              } else {
+                document.getElementById(ID).innerHTML = document
+                  .getElementById(ID)
+                  .innerHTML.replace(" (Locked)", "");
+              }
+            }
+          });
       }
     </script>
   </body>

@@ -22,7 +22,7 @@ create table Projects(
     Status VARCHAR(8)
 );
 
-create table Comments(
+create table CommentsTest(
     ID INT AUTO_INCREMENT PRIMARY KEY,
     Time TIMESTAMP,
     Project INT,
@@ -40,6 +40,9 @@ create table Users(
     Password VARCHAR(255),
     Sudo INT,
     ProfilePicture VARCHAR(255)
+    ModifyProfilePicture INT,
+    WriteComments INT,
+    Locked INT,
 );
 
 create table Sessions(
@@ -83,7 +86,6 @@ DELETE FROM Users WHERE Username = '';
 
 All changes to the tables
 
-ALTER TABLE Users ADD COLUMN ModifyProfilePicture INT DEFAULT 1;
-ALTER TABLE Users ADD COLUMN WriteComments INT DEFAULT 1;
+ALTER TABLE Users ADD COLUMN Locked INT DEFAULT 0;
 
 

@@ -138,6 +138,9 @@ async function Authorised(cookie, pool) {
   result = result[0].UserID;
   sql = "SELECT Sudo FROM Users WHERE ID = ?";
   let [sudo] = await pool.query(sql, [result]);
+  if (sudo.length == 0) {
+    return false;
+  }
   sudo = sudo[0].Sudo;
   if (sudo == 1) {
     return true;
@@ -232,13 +235,13 @@ async function WriteComments(UserID, pool) {
   return false;
 }
 
-async function AddLikes(UserID, pool) {
-  const sql = `SELECT AddLikes FROM Users WHERE ID = ?`;
+async function Locked(UserID, pool) {
+  const sql = `SELECT Locked FROM Users WHERE ID = ?`;
   const [result] = await pool.query(sql, [UserID]);
   if (result.length == 0) {
     return false;
   }
-  if (result[0].AddLikes == 1) {
+  if (result[0].Locked == 1) {
     return true;
   }
   return false;
@@ -531,36 +534,45 @@ app.post("/api/projects/:project/comment", CommentLimit, async (req, res) => {
   const StartTime = new Date().getTime();
   const UserID = await GetUserID(req.cookies["Auth"], req);
   if (UserID == null) {
-    res.sendStatus(401);
+    res.send({ status: false, message: "You are not logged in" });
     Logs(req, 401, StartTime);
     return;
   }
 
   if (await WriteComments(UserID, pool) == false) {
-    res.sendStatus(403);
+    res.send({ status: false, message: "Writing comments has been disabled on your account" });
+    Logs(req, 403, StartTime);
+    return;
+  }
+
+  let query = 'SELECT Locked FROM Users WHERE ID = ?'
+  const [result] = await pool.query(query, [UserID]);
+  if (result[0].Locked == 1) {
+    res.clearCookie("Auth");
+    res.send({ status: false, message: "Your account is locked" });
     Logs(req, 403, StartTime);
     return;
   }
 
   if (req.body.comment == "" || req.params.project == "") {
-    res.sendStatus(400);
+    res.send({ status: false, message: "Comment is empty or on non existent article" })
     Logs(req, 400, StartTime);
     return;
   }
   let commentVar = req.body.comment;
 
   if (commentVar.length > 400) {
-    res.sendStatus(400);
+    res.send({ status: false, message: "Comment too long" });
     Logs(req, 400, StartTime);
     return;
   }
   if (req.body.comment == null || req.params.project == null) {
-    res.sendStatus(400);
+    res.send({ status: false, message: "Comment is empty or on non existent article" })
     Logs(req, 400, StartTime);
     return;
   }
   if (req.body.comment == undefined || req.params.project == undefined) {
-    res.sendStatus(400);
+    res.send({ status: false, message: "Comment is empty or on non existent article" })
     Logs(req, 400, StartTime);
     return;
   }
@@ -580,7 +592,7 @@ app.post("/api/projects/:project/comment", CommentLimit, async (req, res) => {
   const sql = `INSERT INTO Comments (Project,UserID,Content,Time,Likes,Unique_id) VALUES (?, ?, ?, ?, ?, ?)`;
   const values = [project[0].ID, UserID, comment, datetime, 0, id];
   pool.query(sql, values);
-  res.sendStatus(204);
+  res.send({ status: true, message: "Comment added" });
   Logs(req, 204, StartTime);
 });
 
@@ -800,7 +812,7 @@ app.get('/management/manageUsers', async (req, res) => {
   const StartTime = new Date().getTime();
   const Cookies = req.cookies;
   if (await Authorised(Cookies["Auth"], pool)) {
-    let sql = `SELECT Username, Email, id, ProfilePicture, ModifyProfilePicture, WriteComments, Sudo, Time FROM Users ORDER BY Sudo DESC`;
+    let sql = `SELECT Username, Email, id, ProfilePicture, ModifyProfilePicture, WriteComments, Sudo, Time, Locked FROM Users ORDER BY Sudo DESC`;
     let [Users] = await pool.query(sql);
 
     for (i = 0; i < Users.length; i++) {
@@ -815,6 +827,22 @@ app.get('/management/manageUsers', async (req, res) => {
       sql = `SELECT count(*) FROM projectLikes WHERE UserID = ?`;
       [count] = await pool.query(sql, [Users[i].id]);
       Users[i].Likes = count[0]["count(*)"];
+
+      sql = `SELECT TimeLastUsed FROM Sessions WHERE UserID = ? ORDER BY TimeLastUsed DESC LIMIT 1`;
+      [count] = await pool.query(sql, [Users[i].id]);
+      if (count.length == 0) {
+        Users[i].LastUsed = "Never";
+      } else {
+        Users[i].LastUsed = count[0].TimeLastUsed;
+        Users[i].LastUsed = Users[i].LastUsed.toLocaleString('en-GB', {
+          day: 'numeric',
+          month: 'short',
+          year: 'numeric',
+          hour: 'numeric',
+          minute: 'numeric',
+          second: 'numeric'
+        });
+      }
 
       //Make the sign up to locale string
       Users[i].Time = Users[i].Time.toLocaleString('en-GB', {
@@ -839,17 +867,30 @@ app.get('/management/manageUsers', async (req, res) => {
       else {
         Users[i].WriteComments = 'False';
       }
-      if (Users[i].AddLikes == 1) {
-        Users[i].AddLikes = 'True';
+      if (Users[i].Locked == 1) {
+        Users[i].Locked = 'True';
       }
       else {
-        Users[i].AddLikes = 'False';
+        Users[i].Locked = 'False';
       }
+
       if (Users[i].Sudo == 1) {
         Users[i].Username = "👑 " + Users[i].Username + " 👑";
       }
     }
     res.render(__dirname + "/AdminPages/manageUsers.ejs", { Users: Users });
+    Logs(req, 200, StartTime);
+  } else {
+    res.redirect("/login");
+    Logs(req, 302, StartTime);
+  }
+})
+
+app.get('/management/manageUser/:id', async (req, res) => {
+  const StartTime = new Date().getTime();
+  const Cookies = req.cookies;
+  if (await Authorised(Cookies["Auth"], pool)) {
+    res.render(__dirname + "/AdminPages/manageUser.ejs");
     Logs(req, 200, StartTime);
   } else {
     res.redirect("/login");
@@ -920,20 +961,20 @@ app.get('/api/management/DeletePfp/:id', async (req, res) => {
 })
 
 
-app.get('/api/management/AddLikes/:id', async (req, res) => {
+app.get('/api/management/LockAccount/:id', async (req, res) => {
   const StartTime = new Date().getTime();
   const Cookies = req.cookies;
   if (await Authorised(Cookies["Auth"], pool)) {
     let id = req.params.id;
-    let sql = `SELECT AddLikes FROM Users WHERE id = ?`;
+    let sql = `SELECT Locked FROM Users WHERE id = ?`;
     let [result] = await pool.query(sql, [id])
-    if (result[0].AddLikes == 1) {
-      sql = `UPDATE Users SET AddLikes = 0 WHERE id = ?`;
+    if (result[0].Locked == 1) {
+      sql = `UPDATE Users SET Locked = 0 WHERE id = ?`;
       await pool.query(sql, [id]);
       res.send({ status: 'Success', mode: 'False' });
       Logs(req, 200, StartTime);
     } else {
-      sql = `UPDATE Users SET AddLikes = 1 WHERE id = ?`;
+      sql = `UPDATE Users SET Locked = 1 WHERE id = ?`;
       await pool.query(sql, [id]);
       res.send({ status: 'Success', mode: 'True' });
       Logs(req, 200, StartTime);
@@ -1061,6 +1102,11 @@ app.post("/api/user/login", async (req, res) => {
       let sql = `SELECT * FROM Users WHERE Username = ? AND Password = ?`;
       const [result] = await pool.query(sql, [username, passwordHash]);
       if (result.length == 1) {
+        if (result[0].Locked == 1) {
+          res.send("Account is locked");
+          Logs(req, 403, StartTime);
+          return;
+        }
         Logs(req, 200, StartTime);
         //Make a cookie with the username current time and a random number
         const date = new Date();
@@ -1102,8 +1148,18 @@ app.get("/api/user", async (req, res) => {
   let sql = `SELECT * FROM Sessions WHERE Cookie = ?`;
   let [result] = await pool.query(sql, [cookie]);
   if (result.length == 1) {
-    sql = `SELECT Username,Sudo,ModifyProfilePicture,WriteComments FROM Users WHERE id = ?`;
+    sql = `SELECT Username,Sudo,ModifyProfilePicture,WriteComments,Locked FROM Users WHERE ID = ?`;
     [result] = await pool.query(sql, [result[0].UserID]);
+    if (result.length == 0) {
+      res.sendStatus(204);
+      Logs(req, 204, StartTime);
+      return;
+    }
+    if (result[0].Locked == 1) {
+      res.clearCookie("Auth");
+      res.send(204);
+      return;
+    }
     res.send(result[0]);
     Logs(req, 200, StartTime);
   } else {
