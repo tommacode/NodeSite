@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap"
+      rel="stylesheet"
+    />
+    <script src="/login.js"></script>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tom Blake</title>
+    <!--Meta Tags-->
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:domain" content="tomblake.me" />
+    <meta
+      name="twitter:title"
+      property="og:title"
+      itemprop="name"
+      content="The webite made by Tom, for Tom"
+    />
+    <meta
+      name="twitter:description"
+      property="og:description"
+      itemprop="description"
+      content="A one page site that says a lot about what I do and who I am"
+    />
+    <link rel="stylesheet" href="css.css" />
+  </head>
+  <body>
+    <nav>
+      <a href="/login" class="listLink" style="font-size: 1rem" id="loginInfo"
+        >Not logged in</a
+      >
+      <ul>
+        <li><a class="listLink" href="/">Home</a></li>
+        <li><a class="listLink" href="/projects">Articles</a></li>
+      </ul>
+    </nav>
+    <header>
+      <h1>Management</h1>
+    </header>
+    <div class="borders">
+      <h3>Links</h3>
+      <a
+        href="/management/createArticle"
+        class="clearBtn"
+        style="float: none; margin: 0 2vw; text-decoration: none"
+        >Create Article</a
+      >
+
+      <a
+        href="/management/manageArticles"
+        class="clearBtn"
+        style="float: none; margin: 0 2vw; text-decoration: none"
+        >Manage Articles</a
+      >
+
+      <a
+        href="/management/manageUsers"
+        class="clearBtn"
+        style="float: none; margin: 0 2vw; text-decoration: none"
+        >Manage Users</a
+      >
+    </div>
+    <div class="borders" id="QuickActions">
+      <a onclick="Expand()" class="clearBtn">Expand</a>
+      <h3>Quick Actions</h3>
+      <div style="display: none">
+        <a
+          onclick="LockNewAccounts()"
+          class="clearBtn"
+          id="LockNewAccounts"
+          style="float: none; margin: 0 2vw; text-decoration: none"
+          >Lock New Accounts <%= LockAccounts %></a
+        >
+        <a
+          href=""
+          class="clearBtn"
+          style="float: none; margin: 0 2vw; text-decoration: none"
+          >Allow New Comments <%= NewComments %></a
+        >
+        <a
+          href=""
+          class="clearBtn"
+          style="float: none; margin: 0 2vw; text-decoration: none"
+          >Change Profile Pictures <%= ChangePfp %></a
+        >
+      </div>
+    </div>
+    <script>
+      function Expand() {
+        if (
+          document.querySelector("#QuickActions > div").style.display == "none"
+        ) {
+          document.querySelector("#QuickActions > div").style.display = "block";
+          //Change the text of the link
+          document.querySelector("#QuickActions a").innerHTML = "Collapse";
+        } else {
+          document.querySelector("#QuickActions > div").style.display = "none";
+          //Change text of the link
+          document.querySelector("#QuickActions a").innerHTML = "Expand";
+        }
+      }
+
+      function LockNewAccounts() {
+        fetch("/api/quickActions/LockonCreate")
+          .then((res) => res.json())
+          .then((data) => {
+            if (data.error == false) {
+              document.getElementById("LockNewAccounts").innerHTML =
+                "Lock New Accounts (" + data.status + ")";
+            } else if (data.error == true) {
+              alert("Error: " + data.message);
+            }
+          });
+      }
+    </script>
+  </body>
+</html>

@@ -112,7 +112,7 @@ async function Logs(req, StatusCode, StartTime) {
       FinishTime - StartTime
     }ms`
   );
-  sql = `INSERT INTO Logs (Time, ip, forwardedfor, useragent, method, path, statuscode, User) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
+  const sql = `INSERT INTO Logs (Time, ip, forwardedfor, useragent, method, path, statuscode, User) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
   const values = [
     datetime,
     ip,
@@ -200,7 +200,6 @@ async function CloudflareTurnStyle(token) {
   let formData = new FormData();
   formData.append("secret", process.env.CfTurnStyleSecret);
   formData.append("response", token);
-  //formData.append("remoteip", ip);
 
   const url = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
   const result = await fetch(url, {
@@ -218,10 +217,7 @@ async function ModifyProfilePictureCheck(UserID, pool) {
   if (result.length == 0) {
     return false;
   }
-  if (result[0].ModifyProfilePicture == 1) {
-    return true;
-  }
-  return false;
+  return result[0].ModifyProfilePicture == 1;
 }
 
 async function WriteComments(UserID, pool) {
@@ -230,10 +226,7 @@ async function WriteComments(UserID, pool) {
   if (result.length == 0) {
     return false;
   }
-  if (result[0].WriteComments == 1) {
-    return true;
-  }
-  return false;
+  return result[0].WriteComments == 1;
 }
 
 async function Locked(UserID, pool) {
@@ -242,16 +235,12 @@ async function Locked(UserID, pool) {
   if (result.length == 0) {
     return false;
   }
-  if (result[0].Locked == 1) {
-    return true;
-  }
-  return false;
+  return result[0].Locked == 1;
 }
-let Cache = [];
 async function RefreshCacheArticles(Cache) {
   const sql = `SELECT ID, Title, Content FROM Projects WHERE Status = 1 ORDER BY ID DESC LIMIT 3`;
   let [Articles] = await pool.query(sql);
-  for (i = 0; i < Articles.length; i++) {
+  for (let i = 0; i < Articles.length; i++) {
     //If the articles has <home> in it then remove it and </home> if it doesn't then remove the article and the title from the array
     if (Articles[i].Content.includes("<home>")) {
       //Console.log the character index okf the <home> tag
@@ -262,10 +251,9 @@ async function RefreshCacheArticles(Cache) {
       Articles.splice(i, 1);
     }
   }
-  Cache = Articles;
-  return Cache;
+  return Articles;
 }
-
+let Cache = [];
 async function ShowResults() {
   Cache = await RefreshCacheArticles();
 }
@@ -437,7 +425,7 @@ app.get("/projects/*", async (req, res) => {
     });
   });
 
-  date = new Date(result[0].Time);
+  let date = new Date(result[0].Time);
   date = date.toLocaleString("en-GB", {
     day: "numeric",
     month: "long",
@@ -457,11 +445,7 @@ app.get("/projects/*", async (req, res) => {
     Liked = true;
   }
 
-  if ((await Authorised(req.cookies.Auth, pool)) == true) {
-    SudoUser = true;
-  } else {
-    SudoUser = false;
-  }
+  SudoUser = (await Authorised(req.cookies.Auth, pool)) == true;
 
   //Replace <home> and </home> with ""
   result[0].Content = result[0].Content.replace("<home>", "");
@@ -792,12 +776,19 @@ app.post("/api/projects/new", async (req, res) => {
   let Content = req.body.content;
   let tags = req.body.tags;
   let Status = req.body.visibility;
+  if (Status == "Public") {
+    Status = "1";
+  } else {
+    Status = "0";
+  }
 
   //Replace all " with ""
   title = title.replaceAll('"', '""');
   appetizer = appetizer.replaceAll('"', '""');
   Content = Content.replaceAll('"', '""');
   tags = tags.replaceAll('"', '""');
+
+  ShowResults();
 
   if (await Authorised(password, pool)) {
     //Send Email With sendgrid
@@ -864,7 +855,14 @@ app.get("/management", async (req, res) => {
   const StartTime = new Date().getTime();
   const Cookies = req.cookies;
   if (await Authorised(Cookies["Auth"], pool)) {
-    res.sendFile(__dirname + "/AdminPages/management.html");
+    //Read settings.json and parse json
+    let settings = fs.readFileSync(__dirname + "/Settings.json");
+    settings = JSON.parse(settings);
+    res.render(__dirname + "/AdminPages/management.ejs", {
+      LockAccounts: "(" + settings.New_Users.LockonCreate + ")",
+      NewComments: "(" + settings.Existing_Users.CreateComments + ")",
+      ChangePfp: "(" + settings.Existing_Users.ChangePfp + ")",
+    });
     Logs(req, 200, StartTime);
   } else {
     res.redirect("/login");
@@ -876,7 +874,7 @@ app.get("/management/createArticle", async (req, res) => {
   const StartTime = new Date().getTime();
   const Cookies = req.cookies;
   if (await Authorised(Cookies["Auth"], pool)) {
-    Images = fs.readdirSync(__dirname + "/Photos");
+    Images = fs.readdirSync(process.env.ArticlePhotosPath);
     res.render(__dirname + "/AdminPages/createArticle.ejs", { Images: Images });
     Logs(req, 200, StartTime);
   } else {
@@ -1135,12 +1133,20 @@ app.post("/api/user/create", async (req, res) => {
     return;
   }
   //Check if username is taken
-  let sql = `SELECT count(*) FROM Users WHERE Username = ?`;
-  let [result] = await pool.query(sql, [username]);
+  let sql = `SELECT count(*) FROM Users WHERE Username = ? OR Email = ?`;
+  let [result] = await pool.query(sql, [username, email]);
   if (result[0]["count(*)"] > 0) {
-    res.send("Username is taken");
+    res.send("Username or email is already taken");
     Logs(req, 400, StartTime);
     return;
+  }
+
+  //Read and parse json file
+  const data = fs.readFileSync("Settings.json");
+  const settings = JSON.parse(data);
+  let Locked = 0;
+  if (settings.New_Users.LockonCreate == true) {
+    Locked = 1;
   }
 
   const cfTurnStyle = req.body["cf-turnstile-response"];
@@ -1150,8 +1156,8 @@ app.post("/api/user/create", async (req, res) => {
         .createHash("sha256")
         .update(password)
         .digest("hex");
-      sql = `INSERT INTO Users (Username, Password, Email) VALUES (?, ?, ?)`;
-      pool.query(sql, [username, passwordHash, email]);
+      sql = `INSERT INTO Users (Username, Password, Email, Locked) VALUES (?, ?, ?, ?)`;
+      pool.query(sql, [username, passwordHash, email, Locked]);
       res.send("Account created");
       Logs(req, 200, StartTime);
     } else {
@@ -1386,6 +1392,31 @@ app.get("/api/avatar/:pfp", async (req, res) => {
   }
   res.sendFile(process.env.AvatarPath + pfp + ".png");
   Logs(req, 200, StartTime);
+});
+
+//Quick Actions Api
+app.get("/api/quickActions/LockonCreate", async (req, res) => {
+  const StartTime = new Date().getTime();
+  if ((await Authorised(req.cookies["Auth"], pool)) == true) {
+    const data = fs.readFileSync(__dirname + "/Settings.json");
+    const Settings = JSON.parse(data);
+    if (Settings.New_Users.LockonCreate == false) {
+      //Enables lock on create
+      Settings.New_Users.LockonCreate = true;
+      res.send({ status: true, error: false });
+      fs.writeFileSync(__dirname + "/Settings.json", JSON.stringify(Settings));
+      Logs(req, 200, StartTime);
+    } else {
+      //Disables lock on create
+      Settings.New_Users.LockonCreate = false;
+      res.send({ status: false, error: false });
+      fs.writeFileSync(__dirname + "/Settings.json", JSON.stringify(Settings));
+      Logs(req, 200, StartTime);
+    }
+  } else {
+    res.send({ status: false, error: true, message: "Not an admin" });
+    Logs(req, 401, StartTime);
+  }
 });
 
 app.listen(process.env.PORT, () => {

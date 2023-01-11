@@ -169,10 +169,11 @@
       <script>
         //Post data to the server
         function Visibility() {
-          if (document.getElementById("Visibility").innerHTML == "Private") {
-            document.getElementById("Visibility").innerHTML = "Public";
+          button = document.getElementById("Visibility");
+          if (button.innerHTML == "Public") {
+            button.innerHTML = "Private";
           } else {
-            document.getElementById("Visibility").innerHTML = "Private";
+            button.innerHTML = "Public";
           }
         }
         function SubmitNew() {
