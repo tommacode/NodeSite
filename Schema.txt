@@ -7,7 +7,8 @@ create table Logs(
     Method VARCHAR(8),
     Path VARCHAR(255),
     StatusCode INT,
-    User INT
+    User INT,
+    ProcessTime INT
 );
 
 create table Projects(
@@ -86,6 +87,6 @@ DELETE FROM Users WHERE Username = '';
 
 All changes to the tables
 
-ALTER TABLE Users ADD COLUMN Locked INT DEFAULT 0;
+ALTER TABLE Logs ADD COLUMN ProcessTime INT DEFAULT 0;
 
 

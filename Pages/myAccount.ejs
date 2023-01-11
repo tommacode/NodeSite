@@ -4,7 +4,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Poppins:wght@200;400;600&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap"
       rel="stylesheet"
     />
     <script src="/login.js"></script>
@@ -61,7 +61,7 @@
       <div class="borders">
         <h3 id="ChangepfpHeading">Add/Update profile picture</h3>
         <div id="LoadingScreenParent" class="hidden">
-          <div id="dots" class="center"></div>
+          <div style="margin-top: 5vh" id="dots" class="center"></div>
         </div>
         <form
           id="Changepfp"
@@ -74,7 +74,7 @@
           <br />
           <input id="submitButton" type="submit" value="Upload" />
         </form>
-        <div class="borders">
+        <div id="Removepfp" class="borders">
           <h3>Remove Profile Picture</h3>
           <button onclick="RemovePFP()">Remove</button>
         </div>
@@ -94,7 +94,9 @@
             </li>
           </ul>
         </div>
-        <% }; %>
+        <% if (i != Sessions.length-1) {%>
+        <hr />
+        <% } %> <% }; %>
       </div>
       <div id="footer">
         <h3>Footer</h3>
@@ -132,6 +134,7 @@
           document.getElementById("ChangepfpHeading").style.display = "none";
           document.getElementById("fileButton").style.display = "none";
           document.getElementById("submitButton").style.display = "none";
+          document.getElementById("Removepfp").style.display = "none";
           var form = document.getElementById("Changepfp");
           var formData = new FormData(form);
           var xhr = new XMLHttpRequest();

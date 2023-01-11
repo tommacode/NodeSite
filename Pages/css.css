@@ -3,7 +3,14 @@
   font-family: "Poppins", sans-serif;
   z-index: 0;
   max-width: 100%;
-  --text-color: #fff;
+  --color-dark: #232323;
+  --color-darker: #1b1b1b;
+  --text-color: #05b2dc;
+}
+
+::selection {
+  background: var(--text-color);
+  color: var(--color-dark);
 }
 
 #content {
@@ -13,14 +20,7 @@
 html {
   --border-thickness: 5px;
   --vert-margins: 2.5vh;
-  background-color: hsla(136, 10%, 7%, 1);
-  background-image:
-    radial-gradient(at 59% 37%, hsla(335, 100%, 16%, 1) 0px, transparent 50%),
-    radial-gradient(at 70% 56%, hsla(222, 100%, 8%, 1) 0px, transparent 50%),
-    radial-gradient(at 66% 95%, hsla(16, 0%, 0%, 1) 0px, transparent 50%),
-    radial-gradient(at 16% 65%, hsla(358, 100%, 28%, 1) 0px, transparent 50%),
-    radial-gradient(at 21% 13%, hsla(193, 100%, 15%, 1) 0px, transparent 50%),
-    radial-gradient(at 93% 28%, hsla(21, 71%, 63%, 1) 0px, transparent 50%);
+  background-color: var(--color-darker);
 }
 
 .linkBar {
@@ -43,7 +43,7 @@ html {
   text-decoration: none;
   color: var(--text-color);
   background: linear-gradient(to top, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0)),
-    linear-gradient(to top, #ffffff, #ffffff);
+    linear-gradient(to top, var(--text-color), var(--text-color));
   background-size: 10% 1em, 0 0.15em;
   background-position: 50% 100%, 50% 100%;
   background-repeat: no-repeat;
@@ -67,10 +67,21 @@ body {
   font-weight: 200;
 }
 
+header {
+  padding-top: 2vh;
+}
+
 header h1 {
   font-size: 3em;
   font-weight: 600;
-  line-height: 1em;
+  line-height: 1.5em;
+}
+
+header h1 span {
+  background-color: var(--text-color);
+  color: var(--color-dark);
+  padding: 0.25vh 0.5vw;
+  border-radius: 15px;
 }
 
 header h3 {
@@ -85,13 +96,21 @@ header h3 {
 #project,
 #create,
 .borders {
-  margin-top: 5vh;
-  border-bottom: var(--border-thickness) solid white;
-  border-top: var(--border-thickness) solid white;
-  border-radius: 10px;
-  padding-top: var(--vert-margins);
-  padding-bottom: var(--vert-margins);
-  line-height: 1.125em;
+  background-color: var(--color-dark);
+  margin: 2vh 0;
+  padding: 2vh 2vh;
+  border-radius: 25px;
+}
+
+#skills ul {
+  list-style-type: none;
+}
+
+#skills li {
+  background-color: var(--color-darker);
+  margin: 1vh 0;
+  padding: 1vh 1vh;
+  border-radius: 15px;
 }
 
 h3 {
@@ -120,12 +139,13 @@ li {
   float: right;
   font-size: 0.875rem;
   background: linear-gradient(to top, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0)),
-    linear-gradient(to top, #ffffff, #ffffff);
+    linear-gradient(to top, var(--text-color), var(--text-color));
   background-size: 10% 1em, 0 0.15em;
   background-position: 50% 100%, 50% 100%;
   background-repeat: no-repeat;
   transition: background-size 400ms;
   padding-bottom: 5px;
+  cursor: pointer;
 }
 
 .clearBtn:hover,
@@ -137,14 +157,32 @@ li {
   display: none;
 }
 
-nav ul, .navStyle ul {
+nav {
+  background-color: var(--color-dark);
+  padding: 0 2vw;
+  padding-bottom: 2vh;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  /* allign items vertically */
+  align-items: center;
+  /* border radius the bottom corners */
+  border-bottom-left-radius: 10px;
+  border-bottom-right-radius: 10px;
+  /* Add a bottom border to the nav */
+  border-bottom: 1px solid var(--text-color);
+}
+
+nav ul,
+.navStyle ul {
   list-style-type: none;
   display: flex;
   text-align: right;
   float: right;
 }
 
-nav ul li a, .navStyle ul li a {
+nav ul li a,
+.navStyle ul li a {
   padding: 0;
   margin: 0;
   color: var(--text-color);
@@ -167,7 +205,7 @@ nav ul li a, .navStyle ul li a {
 }
 
 #dots:before {
-  --primary: #fff;
+  --primary: var(--text-color);
   display: block;
   height: 5px;
   width: 5px;
@@ -247,6 +285,84 @@ img {
   display: flex;
 }
 
+#comment {
+  padding: 10px;
+  border-radius: 10px;
+  background-color: var(--color-dark);
+  max-width: 96%;
+  min-width: 96%;
+  min-height: 10vh;
+  color: var(--text-color);
+  font-size: 1rem;
+}
+
+#SubmitComment {
+  background-color: var(--color-darker);
+  color: var(--text-color);
+  border: none;
+  padding: 1.2vh 1.2vh;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+hr {
+  border: 2px solid var(--color-darker);
+  margin: 2.5vh 0;
+}
+
+#searchBar {
+  border: none;
+  border-radius: 10px;
+  padding: 10px;
+  background-color: var(--color-darker);
+  color: var(--text-color);
+  font-size: 1rem;
+}
+
+#pfpThumbnail {
+  border-radius: 25px;
+  width: 20px;
+  height: 20px;
+  margin-right: 1vw;
+}
+
+#homeArticleLink {
+  text-decoration: underline;
+  color: var(--text-color);
+}
+
+/* Put both elements in #Like on the same line */
+#Like {
+  display: flex;
+  flex-direction: row;
+  /* Put the text on the left */
+  justify-content: flex-start;
+  /* Make sure teh elements are vertically aligned */
+  align-items: center
+}
+
+#Like #likeBtn {
+  margin-left: 1vw;
+}
+
+#title,
+#appetizer,
+#Content-field,
+#tags {
+  background-color: var(--color-darker);
+  border: 0;
+  color: var(--text-color);
+  margin: 0.5vh 0;
+  border-radius: 10px;
+  padding: 5px
+}
+
+#Content-field {
+  min-width: 45vw;
+  max-width: 45vw;
+  min-height: 30vh;
+}
+
 @-webkit-keyframes spin {
   to {
     -webkit-transform: rotate(360deg);
@@ -263,7 +379,7 @@ img {
 
 /* Media Queries */
 
-@media only screen and (max-width: 1000px) {
+@media only screen and (max-width: 1100px) {
   body {
     width: 80%;
     margin: 0;
@@ -291,4 +407,26 @@ img {
     max-width: 96vw;
     max-height: 96vh;
   }
+
+  p {
+    font-size: 1rem;
+  }
+
+  .clearBtn {
+    font-size: 0.9rem;
+  }
+
+  #loginInfo {
+    font-size: 0.9rem;
+  }
+
+  #skills ul {
+    padding-left: 0;
+  }
+
+  .borders {
+    padding: 4vh 2vw;
+  }
+
+  ;
 }

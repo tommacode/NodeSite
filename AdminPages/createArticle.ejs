@@ -4,7 +4,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Poppins:wght@200;400;600&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap"
       rel="stylesheet"
     />
     <script src="/login.js"></script>
@@ -13,8 +13,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Add/Edit articles</title>
     <link rel="stylesheet" href="../css.css" />
+    <link rel="stylesheet" href="../optionalStyling.css" />
   </head>
-  <body onload="LoadImages()">
+  <body>
     <div id="frosted">
       <nav>
         <a href="/login" class="listLink" style="font-size: 1rem" id="loginInfo"
@@ -30,18 +31,22 @@
         <h1>Create article</h1>
         <h3>Create another article</h3>
       </header>
-      <button id="reset1" class="clearBtn" onclick="ResetAll()">
-        Reset All
-      </button>
       <div id="create">
         <form>
-          <input type="text" name="title" id="title" placeholder="Title" />
+          <input
+            type="text"
+            name="title"
+            id="title"
+            placeholder="Title"
+            class="textField"
+          />
           <br />
           <input
             type="text"
             id="appetizer"
             placeholder="Appetizer"
             style="width: 15vw"
+            class="textField"
           />
           <br />
           <textarea
@@ -55,11 +60,12 @@
             id="tags"
             placeholder="Tags (Separate by commas)"
             style="width: 25vw"
+            class="textField"
           />
           <br />
           <button onclick="Visibility()" id="Visibility">Public</button>
           <br />
-          <input type="button" onclick="SubmitNew()" value="Create" />
+          <a type="button" onclick="SubmitNew()" id="clearBtn">Create</a>
         </form>
         <p style="display: none" id="Response"></p>
       </div>
@@ -85,7 +91,57 @@
       </div>
       <div class="borders">
         <h3>Images:</h3>
-        <div id="images"></div>
+        <div id="images">
+          <% for (i = 0; i < Images.length; i++) { %> <% if
+          (Images[i].split('.')[1] == 'png' || Images[i].split('.')[1] == 'jpg')
+          {%>
+          <div class="borders" id="images<%- i %>">
+            <img src="/photos/<%- Images[i] %>" alt="<%- Images[i] %>" />
+            <br />
+            <p style="float: left">Relative Path: /photos/<%- Images[i] %></p>
+            <button
+              style="float: right"
+              class="clearBtn"
+              onclick="ShowTag('<%- i %>')"
+            >
+              Show Tag
+            </button>
+            <br />
+            <div class="hidden" id="<%- i %>Tag" style="text-align: center">
+              <p>
+                <code
+                  >&ltimg src="/photos/<%- Images[i] %>" alt="<%- Images[i] %>"
+                  /&gt</code
+                >
+              </p>
+            </div>
+          </div>
+          <% } else if (Images[i].split('.')[1] == 'mp4') {%>
+          <div class="borders">
+            <video>
+              <source src="/photos/<%- Images[i] %>" type="video/mp4" />
+            </video>
+            <p style="float: left">Relative Path: /photos/<%- Images[i] %></p>
+            <button
+              style="float: right"
+              class="clearBtn"
+              onclick="ShowTag('<%- i %>')"
+            >
+              Show Tag
+            </button>
+            <br />
+            <div class="hidden" id="<%- i %>Tag" style="text-align: center">
+              <br />
+              <p>
+                <code
+                  >&ltvideo controls defer&gt &ltsource src="/photos/<%-
+                  Images[i] %>" type="video/mp4" /&gt&lt/video &gt</code
+                >
+              </p>
+            </div>
+          </div>
+          <% } %><% } %>
+        </div>
       </div>
       <div id="footer">
         <h3>Footer</h3>
@@ -165,15 +221,42 @@
               var images = JSON.parse(http.responseText);
               var imageDiv = document.getElementById("images");
               for (var i = 0; i < images.length; i++) {
-                var image = document.createElement("img");
-                image.src = "/photos/" + images[i];
-                imageDiv.appendChild(image);
-                var imageName = document.createElement("p");
-                imageName.innerHTML = "/photos/" + images[i];
-                imageDiv.appendChild(imageName);
+                if (
+                  images[i].split(".")[1] == "jpg" ||
+                  images[i].split(".")[1] == "png"
+                ) {
+                  var image = document.createElement("img");
+                  image.src = "/photos/" + images[i];
+                  imageDiv.appendChild(image);
+                  var imageName = document.createElement("p");
+                  imageName.innerHTML = "/photos/" + images[i];
+                  imageName.style.textAlign = "center";
+                  imageDiv.appendChild(imageName);
+                } else if (images[i].split(".")[1] == "mp4") {
+                  var video = document.createElement("video");
+                  //add source tags inside the video tag
+                  var source = document.createElement("source");
+                  source.src = "/photos/" + images[i];
+                  source.type = `video/mp4`;
+                  video.appendChild(source);
+                  video.controls = true;
+                  imageDiv.appendChild(video);
+                  var imageName = document.createElement("p");
+                  imageName.innerHTML = "/photos/" + images[i];
+                  imageName.style.textAlign = "center";
+                  imageDiv.appendChild(imageName);
+                }
               }
             }
           };
+        }
+        function ShowTag(ID) {
+          let Div = document.getElementById(`${ID}Tag`);
+          if (Div.className == "hidden") {
+            Div.className = "";
+          } else {
+            Div.className = "hidden";
+          }
         }
       </script>
     </div>

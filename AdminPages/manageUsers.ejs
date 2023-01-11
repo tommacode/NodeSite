@@ -4,7 +4,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Poppins:wght@200;400;600&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap"
       rel="stylesheet"
     />
     <script src="/login.js"></script>
@@ -47,61 +47,61 @@
 
       <div class="borders" id="Users">
         <h3>Users (<%= Users.length %>)</h3>
-        <% for (let i = 0; i < Users.length; i++) { %>
-        <div class="borders">
-          <img
-            class="CommentProfilePicture"
-            src="/api/avatar/<%= Users[i].ProfilePicture %>"
-            alt="Profile Picture"
-            style="float: left; margin-bottom: 2vh; margin-top: 1vh"
-          />
-          <% if (Users[i].Locked == 'True') { %>
-          <h3 id="<%- Users[i].id %>"><%= Users[i].Username %> (Locked)</h3>
-          <% } else { %>
-          <h3 id="<%- Users[i].id %>"><%= Users[i].Username %></h3>
-          <% } %>
-          <p>
-            <strong>Account Created: </strong><%- Users[i].Time %>
-            <br />
-            <strong>Last Used: </strong><%- Users[i].LastUsed %>
-          </p>
-          <p>
-            <strong>Sessions:</strong> <%- Users[i].Sessions %> |
-            <strong>Comments:</strong> <%- Users[i].Comments %> |
-            <strong>Liked Projects:</strong> <%- Users[i].Likes %>
-          </p>
-          <button
-            style="float: left"
-            onclick="DeletePfp('<%- Users[i].id %>')"
-            class="clearBtn"
-          >
-            Remove PFP
-          </button>
-          <button
-            id="<%- Users[i].id %>ModifyProfilePicture"
-            onclick="ModifyPFP('<%- Users[i].id %>')"
-            class="clearBtn"
-          >
-            Change Pfp: <%= Users[i].ModifyProfilePicture %>
-          </button>
-          <button
-            id="<%- Users[i].id %>WriteComments"
-            onclick="WriteComments('<%- Users[i].id %>')"
-            class="clearBtn"
-          >
-            Write Comments: <%= Users[i].WriteComments %>
-          </button>
-          <button
-            id="<%- Users[i].id %>LockAccount"
-            onclick="LockAccount('<%- Users[i].id %>')"
-            class="clearBtn"
-          >
-            Locked: <%= Users[i].Locked %>
-          </button>
-          <br />
-        </div>
-        <% } %>
       </div>
+      <% for (let i = 0; i < Users.length; i++) { %>
+      <div class="borders">
+        <img
+          class="CommentProfilePicture"
+          src="/api/avatar/<%= Users[i].ProfilePicture %>"
+          alt="Profile Picture"
+          style="float: left; margin-bottom: 2vh; margin-top: 1vh"
+        />
+        <% if (Users[i].Locked == 'True') { %>
+        <h3 id="<%- Users[i].id %>"><%= Users[i].Username %> (Locked)</h3>
+        <% } else { %>
+        <h3 id="<%- Users[i].id %>"><%- Users[i].Username %></h3>
+        <% } %>
+        <p>
+          <strong>Account Created: </strong><%- Users[i].Time %>
+          <br />
+          <strong>Last Used: </strong><%- Users[i].LastUsed %>
+        </p>
+        <p>
+          <strong>Sessions:</strong> <%- Users[i].Sessions %> |
+          <strong>Comments:</strong> <%- Users[i].Comments %> |
+          <strong>Liked Projects:</strong> <%- Users[i].Likes %>
+        </p>
+        <button
+          style="float: left"
+          onclick="DeletePfp('<%- Users[i].id %>')"
+          class="clearBtn"
+        >
+          Remove PFP
+        </button>
+        <button
+          id="<%- Users[i].id %>ModifyProfilePicture"
+          onclick="ModifyPFP('<%- Users[i].id %>')"
+          class="clearBtn"
+        >
+          Change Pfp: <%= Users[i].ModifyProfilePicture %>
+        </button>
+        <button
+          id="<%- Users[i].id %>WriteComments"
+          onclick="WriteComments('<%- Users[i].id %>')"
+          class="clearBtn"
+        >
+          Write Comments: <%= Users[i].WriteComments %>
+        </button>
+        <button
+          id="<%- Users[i].id %>LockAccount"
+          onclick="LockAccount('<%- Users[i].id %>')"
+          class="clearBtn"
+        >
+          Locked: <%= Users[i].Locked %>
+        </button>
+        <br />
+      </div>
+      <% } %>
       <!--Project Thumbnails-->
       <div id="footer">
         <h3>Footer</h3>

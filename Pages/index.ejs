@@ -4,7 +4,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Poppins:wght@200;400;600&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap"
       rel="stylesheet"
     />
     <script src="/login.js"></script>
@@ -27,6 +27,7 @@
       content="Welcome, this is my website."
     />
     <link rel="stylesheet" href="css.css" />
+    <link rel="stylesheet" href="optionalStyling.css" />
     <link rel="icon" type="image/x-icon" href="/favicon.ico" />
   </head>
   <body>
@@ -42,16 +43,13 @@
       </nav>
       <!--Big header to draw attention-->
       <header>
-        <h1>I am Tom</h1>
+        <h1>I am <span>Tom</span></h1>
         <h3>I make computers do things so I don't have to</h3>
       </header>
-      <button id="reset1" class="clearBtn" onclick="ResetAll()">
-        Reset All
-      </button>
       <!--Bio-->
       <div id="bio">
         <h3>Bio</h3>
-        <p id="bio-text">
+        <p>
           I am a student in the UK studying computer science. I am currently
           studying for my GCSEs but I hope to move on to a job in computer
           science
@@ -61,7 +59,7 @@
       <!--Skills-->
       <div id="skills">
         <h3>Skills</h3>
-        <ol>
+        <ul>
           <li>
             Programing 🖥️
             <button id="1" class="clearBtn" onclick="onClick()">Expand</button>
@@ -106,8 +104,21 @@
               </p>
             </div>
           </li>
-        </ol>
+        </ul>
       </div>
+      <!--Articles-->
+      <% for (i = 0; i < Articles.length; i++) { %>
+
+      <div class="borders" id="homeArticles">
+        <h3><%= Articles[i].Title %></h3>
+        <p><%- Articles[i].Content %></p>
+        <a
+          id="homeArticleLink"
+          href="/projects/<%- Articles[i].Title.replace(/ /g,'-') %>"
+          >Read More
+        </a>
+      </div>
+      <% } %>
       <div id="footer">
         <h3>Footer</h3>
         <!--Links-->

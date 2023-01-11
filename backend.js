@@ -108,7 +108,8 @@ async function Logs(req, StatusCode, StartTime) {
   }
 
   console.log(
-    `${datetime} | ${ip} | ${forwardedfor} | ${useragent} | ${method} | ${path} | ${StatusCode} | ${Username} | ${FinishTime - StartTime
+    `${datetime} | ${ip} | ${forwardedfor} | ${useragent} | ${method} | ${path} | ${StatusCode} | ${Username} | ${
+      FinishTime - StartTime
     }ms`
   );
   sql = `INSERT INTO Logs (Time, ip, forwardedfor, useragent, method, path, statuscode, User) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
@@ -246,16 +247,41 @@ async function Locked(UserID, pool) {
   }
   return false;
 }
+let Cache = [];
+async function RefreshCacheArticles(Cache) {
+  const sql = `SELECT ID, Title, Content FROM Projects WHERE Status = 1 ORDER BY ID DESC LIMIT 3`;
+  let [Articles] = await pool.query(sql);
+  for (i = 0; i < Articles.length; i++) {
+    //If the articles has <home> in it then remove it and </home> if it doesn't then remove the article and the title from the array
+    if (Articles[i].Content.includes("<home>")) {
+      //Console.log the character index okf the <home> tag
+      Articles[i].Content =
+        Articles[i].Content.split("<home>")[1].split("</home>")[0];
+    } else {
+      //Remove the Content, Title and ID from the array
+      Articles.splice(i, 1);
+    }
+  }
+  Cache = Articles;
+  return Cache;
+}
+
+async function ShowResults() {
+  Cache = await RefreshCacheArticles();
+}
+
+ShowResults();
+
 //HTML responses
 app.get("/", (req, res) => {
   const StartTime = new Date().getTime();
-  res.sendFile(path.join(__dirname, "Pages", "index.html"));
+  res.render(__dirname + "/Pages/index.ejs", { Articles: Cache });
   Logs(req, 200, StartTime);
 });
 
 app.get("/projects", (req, res) => {
   const StartTime = new Date().getTime();
-  res.sendFile(path.join(__dirname, "Pages", "NavPage.html"));
+  res.sendFile(__dirname + "/Pages/NavPage.html");
   Logs(req, 200, StartTime);
 });
 
@@ -268,6 +294,11 @@ app.get("/createArticle", (req, res) => {
 app.get("/css.css", (req, res) => {
   const StartTime = new Date().getTime();
   res.sendFile(__dirname + "/Pages/css.css");
+  Logs(req, 200, StartTime);
+});
+app.get("/optionalStyling.css", (req, res) => {
+  const StartTime = new Date().getTime();
+  res.sendFile(__dirname + "/Pages/optionalStyling.css");
   Logs(req, 200, StartTime);
 });
 
@@ -393,9 +424,9 @@ app.get("/projects/*", async (req, res) => {
   //If a user is sudo then append 👑 to their username
   comments.forEach((comment) => {
     if (comment.Sudo == 1) {
-      comment.Username = "👑 " + comment.Username + " 👑";
-      delete comment.Sudo;
+      comment.Username = "&lt " + comment.Username + " &gt";
     }
+    delete comment.Sudo;
     //Change the time to a more readable format
     comment.Time = comment.Time.toLocaleString("en-GB", {
       day: "numeric",
@@ -417,17 +448,31 @@ app.get("/projects/*", async (req, res) => {
     UserID = 0;
   }
 
-  if (await Authorised(req.cookies.Auth, pool) == true) {
+  sql = `SELECT * FROM projectLikes WHERE Project = ? AND UserID = ?`;
+  let [liked] = await pool.query(sql, [projectID[0].ID, UserID]);
+  let Liked;
+  if (liked.length == 0) {
+    Liked = false;
+  } else {
+    Liked = true;
+  }
+
+  if ((await Authorised(req.cookies.Auth, pool)) == true) {
     SudoUser = true;
   } else {
     SudoUser = false;
   }
+
+  //Replace <home> and </home> with ""
+  result[0].Content = result[0].Content.replace("<home>", "");
+  result[0].Content = result[0].Content.replace("</home>", "");
 
   res.render(__dirname + "/Pages/article.ejs", {
     Title: result[0].Title,
     Content: result[0].Content,
     Appetizer: result[0].Appetizer,
     Time: date,
+    Liked: Liked,
     Likes: result[0].Likes,
     Comments: comments,
     UserID: UserID,
@@ -539,13 +584,16 @@ app.post("/api/projects/:project/comment", CommentLimit, async (req, res) => {
     return;
   }
 
-  if (await WriteComments(UserID, pool) == false) {
-    res.send({ status: false, message: "Writing comments has been disabled on your account" });
+  if ((await WriteComments(UserID, pool)) == false) {
+    res.send({
+      status: false,
+      message: "Writing comments has been disabled on your account",
+    });
     Logs(req, 403, StartTime);
     return;
   }
 
-  let query = 'SELECT Locked FROM Users WHERE ID = ?'
+  let query = "SELECT Locked FROM Users WHERE ID = ?";
   const [result] = await pool.query(query, [UserID]);
   if (result[0].Locked == 1) {
     res.clearCookie("Auth");
@@ -555,7 +603,10 @@ app.post("/api/projects/:project/comment", CommentLimit, async (req, res) => {
   }
 
   if (req.body.comment == "" || req.params.project == "") {
-    res.send({ status: false, message: "Comment is empty or on non existent article" })
+    res.send({
+      status: false,
+      message: "Comment is empty or on non existent article",
+    });
     Logs(req, 400, StartTime);
     return;
   }
@@ -567,12 +618,18 @@ app.post("/api/projects/:project/comment", CommentLimit, async (req, res) => {
     return;
   }
   if (req.body.comment == null || req.params.project == null) {
-    res.send({ status: false, message: "Comment is empty or on non existent article" })
+    res.send({
+      status: false,
+      message: "Comment is empty or on non existent article",
+    });
     Logs(req, 400, StartTime);
     return;
   }
   if (req.body.comment == undefined || req.params.project == undefined) {
-    res.send({ status: false, message: "Comment is empty or on non existent article" })
+    res.send({
+      status: false,
+      message: "Comment is empty or on non existent article",
+    });
     Logs(req, 400, StartTime);
     return;
   }
@@ -632,9 +689,13 @@ app.get("/api/projects/:project/comments", async (req, res) => {
   Logs(req, 200, StartTime);
 });
 
-app.get('/api/comments/delete/:id', async (req, res) => {
+app.get("/api/comments/delete/:id", async (req, res) => {
   const StartTime = new Date().getTime();
-  if (req.params.id == "" || req.params.id == null || req.params.id == undefined) {
+  if (
+    req.params.id == "" ||
+    req.params.id == null ||
+    req.params.id == undefined
+  ) {
     res.sendStatus(400);
     Logs(req, 400, StartTime);
     return;
@@ -654,7 +715,10 @@ app.get('/api/comments/delete/:id', async (req, res) => {
     Logs(req, 404, StartTime);
     return;
   }
-  if (result[0].UserID != UserID && await Authorised(req.cookies["Auth"], pool) == false) {
+  if (
+    result[0].UserID != UserID &&
+    (await Authorised(req.cookies["Auth"], pool)) == false
+  ) {
     res.sendStatus(401);
     Logs(req, 401, StartTime);
     return;
@@ -663,7 +727,7 @@ app.get('/api/comments/delete/:id', async (req, res) => {
   pool.query(sql, [id]);
   res.sendStatus(204);
   Logs(req, 204, StartTime);
-})
+});
 
 //Comment likes
 app.get("/api/comments/:id/like", async (req, res) => {
@@ -808,7 +872,20 @@ app.get("/management", async (req, res) => {
   }
 });
 
-app.get('/management/manageUsers', async (req, res) => {
+app.get("/management/createArticle", async (req, res) => {
+  const StartTime = new Date().getTime();
+  const Cookies = req.cookies;
+  if (await Authorised(Cookies["Auth"], pool)) {
+    Images = fs.readdirSync(__dirname + "/Photos");
+    res.render(__dirname + "/AdminPages/createArticle.ejs", { Images: Images });
+    Logs(req, 200, StartTime);
+  } else {
+    res.redirect("/login");
+    Logs(req, 302, StartTime);
+  }
+});
+
+app.get("/management/manageUsers", async (req, res) => {
   const StartTime = new Date().getTime();
   const Cookies = req.cookies;
   if (await Authorised(Cookies["Auth"], pool)) {
@@ -834,48 +911,45 @@ app.get('/management/manageUsers', async (req, res) => {
         Users[i].LastUsed = "Never";
       } else {
         Users[i].LastUsed = count[0].TimeLastUsed;
-        Users[i].LastUsed = Users[i].LastUsed.toLocaleString('en-GB', {
-          day: 'numeric',
-          month: 'short',
-          year: 'numeric',
-          hour: 'numeric',
-          minute: 'numeric',
-          second: 'numeric'
+        Users[i].LastUsed = Users[i].LastUsed.toLocaleString("en-GB", {
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+          hour: "numeric",
+          minute: "numeric",
+          second: "numeric",
         });
       }
 
       //Make the sign up to locale string
-      Users[i].Time = Users[i].Time.toLocaleString('en-GB', {
-        day: 'numeric',
-        month: 'short',
-        year: 'numeric',
-        hour: 'numeric',
-        minute: 'numeric',
-        second: 'numeric'
+      Users[i].Time = Users[i].Time.toLocaleString("en-GB", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+        hour: "numeric",
+        minute: "numeric",
+        second: "numeric",
       });
 
       //Change 0 and 1 to true and false
       if (Users[i].ModifyProfilePicture == 1) {
-        Users[i].ModifyProfilePicture = 'True';
-      }
-      else {
-        Users[i].ModifyProfilePicture = 'False';
+        Users[i].ModifyProfilePicture = "True";
+      } else {
+        Users[i].ModifyProfilePicture = "False";
       }
       if (Users[i].WriteComments == 1) {
-        Users[i].WriteComments = 'True';
-      }
-      else {
-        Users[i].WriteComments = 'False';
+        Users[i].WriteComments = "True";
+      } else {
+        Users[i].WriteComments = "False";
       }
       if (Users[i].Locked == 1) {
-        Users[i].Locked = 'True';
-      }
-      else {
-        Users[i].Locked = 'False';
+        Users[i].Locked = "True";
+      } else {
+        Users[i].Locked = "False";
       }
 
       if (Users[i].Sudo == 1) {
-        Users[i].Username = "👑 " + Users[i].Username + " 👑";
+        Users[i].Username = "&lt " + Users[i].Username + " &gt";
       }
     }
     res.render(__dirname + "/AdminPages/manageUsers.ejs", { Users: Users });
@@ -884,9 +958,9 @@ app.get('/management/manageUsers', async (req, res) => {
     res.redirect("/login");
     Logs(req, 302, StartTime);
   }
-})
+});
 
-app.get('/management/manageUser/:id', async (req, res) => {
+app.get("/management/manageUser/:id", async (req, res) => {
   const StartTime = new Date().getTime();
   const Cookies = req.cookies;
   if (await Authorised(Cookies["Auth"], pool)) {
@@ -896,9 +970,9 @@ app.get('/management/manageUser/:id', async (req, res) => {
     res.redirect("/login");
     Logs(req, 302, StartTime);
   }
-})
+});
 
-app.get('/api/management/ModifyProfilePicture/:id', async (req, res) => {
+app.get("/api/management/ModifyProfilePicture/:id", async (req, res) => {
   const StartTime = new Date().getTime();
   const Cookies = req.cookies;
   if (await Authorised(Cookies["Auth"], pool)) {
@@ -908,39 +982,39 @@ app.get('/api/management/ModifyProfilePicture/:id', async (req, res) => {
     if (result[0].ModifyProfilePicture == 1) {
       sql = `UPDATE Users SET ModifyProfilePicture = 0 WHERE id = ?`;
       await pool.query(sql, [id]);
-      res.send({ status: 'Success', mode: 'False' });
+      res.send({ status: "Success", mode: "False" });
       Logs(req, 200, StartTime);
     } else {
       sql = `UPDATE Users SET ModifyProfilePicture = 1 WHERE id = ?`;
       await pool.query(sql, [id]);
-      res.send({ status: 'Success', mode: 'True' });
+      res.send({ status: "Success", mode: "True" });
       Logs(req, 200, StartTime);
     }
   }
 });
 
-app.get('/api/management/WriteComments/:id', async (req, res) => {
+app.get("/api/management/WriteComments/:id", async (req, res) => {
   const StartTime = new Date().getTime();
   const Cookies = req.cookies;
   if (await Authorised(Cookies["Auth"], pool)) {
     let id = req.params.id;
     let sql = `SELECT WriteComments FROM Users WHERE id = ?`;
-    let [result] = await pool.query(sql, [id])
+    let [result] = await pool.query(sql, [id]);
     if (result[0].WriteComments == 1) {
       sql = `UPDATE Users SET WriteComments = 0 WHERE id = ?`;
       await pool.query(sql, [id]);
-      res.send({ status: 'Success', mode: 'False' });
+      res.send({ status: "Success", mode: "False" });
       Logs(req, 200, StartTime);
     } else {
       sql = `UPDATE Users SET WriteComments = 1 WHERE id = ?`;
       await pool.query(sql, [id]);
-      res.send({ status: 'Success', mode: 'True' });
+      res.send({ status: "Success", mode: "True" });
       Logs(req, 200, StartTime);
     }
   }
 });
 
-app.get('/api/management/DeletePfp/:id', async (req, res) => {
+app.get("/api/management/DeletePfp/:id", async (req, res) => {
   const StartTime = new Date().getTime();
   const Cookies = req.cookies;
   if (await Authorised(Cookies["Auth"], pool)) {
@@ -951,32 +1025,31 @@ app.get('/api/management/DeletePfp/:id', async (req, res) => {
       fs.unlinkSync(process.env.AvatarPath + result[0].ProfilePicture + ".png");
       sql = `UPDATE Users SET ProfilePicture = 0 WHERE id = ?`;
       pool.query(sql, [id]);
-      res.sendStatus(200)
+      res.sendStatus(200);
       Logs(req, 200, StartTime);
     }
   } else {
-    res.sendStatus(400)
+    res.sendStatus(400);
     Logs(req, 400, StartTime);
   }
-})
+});
 
-
-app.get('/api/management/LockAccount/:id', async (req, res) => {
+app.get("/api/management/LockAccount/:id", async (req, res) => {
   const StartTime = new Date().getTime();
   const Cookies = req.cookies;
   if (await Authorised(Cookies["Auth"], pool)) {
     let id = req.params.id;
     let sql = `SELECT Locked FROM Users WHERE id = ?`;
-    let [result] = await pool.query(sql, [id])
+    let [result] = await pool.query(sql, [id]);
     if (result[0].Locked == 1) {
       sql = `UPDATE Users SET Locked = 0 WHERE id = ?`;
       await pool.query(sql, [id]);
-      res.send({ status: 'Success', mode: 'False' });
+      res.send({ status: "Success", mode: "False" });
       Logs(req, 200, StartTime);
     } else {
       sql = `UPDATE Users SET Locked = 1 WHERE id = ?`;
       await pool.query(sql, [id]);
-      res.send({ status: 'Success', mode: 'True' });
+      res.send({ status: "Success", mode: "True" });
       Logs(req, 200, StartTime);
     }
   }
@@ -1214,8 +1287,12 @@ app.post("/api/upload/pfp", async (req, res) => {
     return;
   } else {
     const UserID = await GetUserID(req.cookies["Auth"], req);
-    if (await ModifyProfilePictureCheck(UserID, pool) == false) {
-      res.send({ status: 'false', message: "Modifying your profile picture has been disabled on your account" });
+    if ((await ModifyProfilePictureCheck(UserID, pool)) == false) {
+      res.send({
+        status: "false",
+        message:
+          "Modifying your profile picture has been disabled on your account",
+      });
       Logs(req, 403, StartTime);
       return;
     }
@@ -1299,13 +1376,16 @@ app.post("/api/remove/pfp", async (req, res) => {
 });
 
 app.get("/api/avatar/:pfp", async (req, res) => {
+  const StartTime = new Date().getTime();
   const pfp = req.params.pfp;
   //check if the image exists
   if (!fs.existsSync(process.env.AvatarPath + pfp + ".png")) {
     res.sendFile(process.env.AvatarPath + "0.png");
+    Logs(req, 404, StartTime);
     return;
   }
   res.sendFile(process.env.AvatarPath + pfp + ".png");
+  Logs(req, 200, StartTime);
 });
 
 app.listen(process.env.PORT, () => {

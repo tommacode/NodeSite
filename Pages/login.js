@@ -7,17 +7,22 @@ fetch("/api/user")
   })
   .then((data) => {
     if (data != undefined) {
-      document.getElementById("loginInfo").innerHTML =
-        "Logged in: " + data.Username;
+      if (window.outerWidth < 700) {
+        document.getElementById("loginInfo").innerHTML = data.Username;
+      } else {
+        document.getElementById("loginInfo").innerHTML =
+          "Logged in: " + data.Username;
+      }
       document.getElementById("loginInfo").href = "/myAccount";
       if (data.Sudo == 1) {
         document.querySelector("nav ul").innerHTML +=
-          '<li><a class="listLink" href="/management">Management</a></li>';
+          '<li><a class="listLink" href="/management">Admin</a></li>';
       }
-      if (location.href.includes('/projects/')) {
+      if (location.href.includes("/projects/")) {
         if (data.WriteComments == 0) {
           document.querySelector(".comment").style.display = "none";
-          document.getElementById('commentMessage').innerHTML = "Posting comments has been disabled on your account"
+          document.getElementById("commentMessage").innerHTML =
+            "Posting comments has been disabled on your account";
         }
       }
     } else {
@@ -48,7 +53,8 @@ fetch("/api/user")
       if (data.ModifyProfilePicture == 0) {
         //Get the children of the .Changepfp form
         document.getElementById("Changepfp").style.display = "none";
-        document.getElementById('ChangepfpHeading').innerHTML = "Changing profile pictures has been disabled on your account"
+        document.getElementById("ChangepfpHeading").innerHTML =
+          "Changing profile pictures has been disabled on your account";
       }
     }
   });

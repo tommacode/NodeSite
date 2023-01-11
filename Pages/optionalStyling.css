@@ -1,0 +1,8 @@
+code {
+    /* change font to a more code-like font */
+    font-family: 'Courier New', Courier, monospace;
+    background-color: var(--color-darker);
+    padding: 0.5vh;
+    border-radius: 10px;
+    font-weight: 300;
+}
