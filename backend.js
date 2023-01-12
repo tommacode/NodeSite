@@ -426,23 +426,27 @@ app.get("/projects/*", async (req, res) => {
     [project]
   );
   let UserID = await GetUserID(req.cookies.Auth, req);
-  sql = `SELECT Users.Username,Users.Sudo,Comments.Content,Comments.Likes,Comments.Unique_id,ProfilePicture,Comments.Time,Users.ID FROM Comments,Users WHERE Comments.UserID=Users.ID AND Project = ? ORDER BY Likes DESC`;
+  sql = `SELECT Users.Username,Users.Sudo,Comments.Content,Comments.Unique_id,ProfilePicture,Comments.Time,Users.ID FROM Comments,Users WHERE Comments.UserID=Users.ID AND Project = ? ORDER BY Likes DESC`;
   let [comments] = await pool.query(sql, [projectID[0].ID]);
-  comments.forEach((comment) => {
-    comment.Content = filter.clean(comment.Content);
-    if (comment.Sudo == 1) {
-      comment.Username = "&lt " + comment.Username + " &gt";
+  for (let i = 0; i < comments.length; i++) {
+    comments[i].Content = filter.clean(comments[i].Content);
+    if (comments[i].Sudo == 1) {
+      comments[i].Username = "&lt " + comments[i].Username + " &gt";
     }
-    delete comment.Sudo;
+    delete comments[i].Sudo;
     //Change the time to a more readable format
-    comment.Time = comment.Time.toLocaleString("en-GB", {
+    comments[i].Time = comments[i].Time.toLocaleString("en-GB", {
       day: "numeric",
       month: "short",
       year: "numeric",
       hour: "2-digit",
       minute: "2-digit",
     });
-  });
+    //Find the number of likes for each comment
+    sql = `SELECT count(*) FROM commentLikes WHERE Unique_id = ?`;
+    [comments[i].Likes] = await pool.query(sql, [comments[i].Unique_id]);
+    comments[i].Likes = comments[i].Likes[0]["count(*)"];
+  }
   let date = new Date(result[0].Time);
   date = date.toLocaleString("en-GB", {
     day: "numeric",
