@@ -30,6 +30,10 @@ app.use(cookies());
 //EJS
 app.set("view engine", "ejs");
 
+//Bad words
+const Filter = require("bad-words");
+const filter = new Filter();
+
 //fileUpload
 const fileUpload = require("express-fileupload");
 app.use(
@@ -112,7 +116,7 @@ async function Logs(req, StatusCode, StartTime) {
       FinishTime - StartTime
     }ms`
   );
-  const sql = `INSERT INTO Logs (Time, ip, forwardedfor, useragent, method, path, statuscode, User) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
+  const sql = `INSERT INTO Logs (Time, ip, forwardedfor, useragent, method, path, statuscode, User, ProcessTime) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`;
   const values = [
     datetime,
     ip,
@@ -122,6 +126,7 @@ async function Logs(req, StatusCode, StartTime) {
     path,
     StatusCode,
     UserID,
+    FinishTime - StartTime,
   ];
   pool.query(sql, values);
 }
@@ -267,9 +272,18 @@ app.get("/", (req, res) => {
   Logs(req, 200, StartTime);
 });
 
-app.get("/projects", (req, res) => {
+app.get("/projects", async (req, res) => {
   const StartTime = new Date().getTime();
-  res.sendFile(__dirname + "/Pages/NavPage.html");
+  let sql = `SELECT Title, Content, Appetizer, Time FROM Projects WHERE Status = 1 ORDER BY ID`;
+  let [Articles] = await pool.query(sql);
+  for (let i = 0; i < Articles.length; i++) {
+    Articles[i].Time = Articles[i].Time.toLocaleString("en-GB", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+  }
+  res.render(__dirname + "/Pages/NavPage.ejs", { Articles: Articles });
   Logs(req, 200, StartTime);
 });
 
@@ -367,8 +381,13 @@ app.get("/myAccount", async (req, res) => {
 //API responses
 //General
 app.get("/api/projects", async (req, res) => {
-  //This function is still needed for the management pages
   const StartTime = new Date().getTime();
+  //This function is still needed for the management pages
+  if ((await Authorised(req.cookies.Auth, pool)) == false) {
+    res.sendStatus(401);
+    Logs(req, 401, StartTime);
+    return;
+  }
   const cookie = req.cookies;
   let sql;
   if (await Authorised(cookie["Auth"], pool)) {
@@ -409,8 +428,8 @@ app.get("/projects/*", async (req, res) => {
   let UserID = await GetUserID(req.cookies.Auth, req);
   sql = `SELECT Users.Username,Users.Sudo,Comments.Content,Comments.Likes,Comments.Unique_id,ProfilePicture,Comments.Time,Users.ID FROM Comments,Users WHERE Comments.UserID=Users.ID AND Project = ? ORDER BY Likes DESC`;
   let [comments] = await pool.query(sql, [projectID[0].ID]);
-  //If a user is sudo then append 👑 to their username
   comments.forEach((comment) => {
+    comment.Content = filter.clean(comment.Content);
     if (comment.Sudo == 1) {
       comment.Username = "&lt " + comment.Username + " &gt";
     }
@@ -424,7 +443,6 @@ app.get("/projects/*", async (req, res) => {
       minute: "2-digit",
     });
   });
-
   let date = new Date(result[0].Time);
   date = date.toLocaleString("en-GB", {
     day: "numeric",
@@ -435,7 +453,6 @@ app.get("/projects/*", async (req, res) => {
   if (UserID == null) {
     UserID = 0;
   }
-
   sql = `SELECT * FROM projectLikes WHERE Project = ? AND UserID = ?`;
   let [liked] = await pool.query(sql, [projectID[0].ID, UserID]);
   let Liked;
@@ -444,12 +461,25 @@ app.get("/projects/*", async (req, res) => {
   } else {
     Liked = true;
   }
+  //Find add liked: true or false to the comments if the user is logged in
+  if (UserID != null) {
+    for (let i = 0; i < comments.length; i++) {
+      sql = `SELECT * FROM commentLikes WHERE Unique_id = ? AND UserID = ?`;
+      let [liked] = await pool.query(sql, [comments[i].Unique_id, UserID]);
+      if (liked.length == 0) {
+        comments[i].Liked = false;
+      } else {
+        comments[i].Liked = true;
+      }
+    }
+  }
 
   SudoUser = (await Authorised(req.cookies.Auth, pool)) == true;
 
   //Replace <home> and </home> with ""
   result[0].Content = result[0].Content.replace("<home>", "");
   result[0].Content = result[0].Content.replace("</home>", "");
+  result[0].Content = result[0].Content.replace(/""/g, /"/);
 
   res.render(__dirname + "/Pages/article.ejs", {
     Title: result[0].Title,
@@ -565,6 +595,18 @@ app.post("/api/projects/:project/comment", CommentLimit, async (req, res) => {
   if (UserID == null) {
     res.send({ status: false, message: "You are not logged in" });
     Logs(req, 401, StartTime);
+    return;
+  }
+
+  //Check if Settings.Existing_Users.CreateComments
+  const data = fs.readFileSync(process.env.SettingsPath);
+  const Settings = JSON.parse(data);
+  if (Settings.Existing_Users.CreateComments == false) {
+    res.send({
+      status: false,
+      message: "Comments have been temporarily disabled",
+    });
+    Logs(req, 403, StartTime);
     return;
   }
 
@@ -748,7 +790,7 @@ app.get("/api/comments/:id/like", async (req, res) => {
       "SELECT count(*) FROM commentLikes WHERE Unique_id = ?",
       [id]
     );
-    res.send({ Status: count[0]["count(*)"] });
+    res.send({ Status: count[0]["count(*)"], Action: "Removed" });
     Logs(req, 200, StartTime);
   }
   if (liked[0]["count(*)"] < 1) {
@@ -762,7 +804,7 @@ app.get("/api/comments/:id/like", async (req, res) => {
       "SELECT count(*) FROM commentLikes WHERE Unique_id = ?",
       [id]
     );
-    res.send({ Status: count[0]["count(*)"] });
+    res.send({ Status: count[0]["count(*)"], Action: "Added" });
     Logs(req, 200, StartTime);
   }
 });
@@ -799,11 +841,6 @@ app.post("/api/projects/new", async (req, res) => {
       text: `Hello,\n\nSomeone has successfully created a new article on the website (tomblake.me) the details are: Title: ${title} Appetizer: ${appetizer} Content: ${Content} Tags: ${tags} Status: ${Status}`,
     };
     sgMail.send(msg);
-    if (Status == "Public") {
-      Status = 1;
-    } else {
-      Status = 0;
-    }
     //Get current time as datetime
     const date = new Date();
     const datetime = date.toISOString().slice(0, 19).replace("T", " ");
@@ -827,7 +864,7 @@ app.post("/api/projects/:id/edit", async (req, res) => {
   const password = req.cookies.Auth;
 
   if (await Authorised(password, pool)) {
-    Logs(req, 200);
+    ShowResults();
     let id = req.params.id;
     let title = req.body.title;
     let appetizer = req.body.appetizer;
@@ -844,6 +881,7 @@ app.post("/api/projects/:id/edit", async (req, res) => {
     let sql = `UPDATE Projects SET Title = ?, Appetizer = ?, Content = ?, Tags = ? WHERE id = ?`;
     pool.query(sql, [title, appetizer, content, tags, id]);
     res.send("Successfully updated project");
+    Logs(req, 200, StartTime);
   } else {
     res.sendStatus(403);
     Logs(req, 403, StartTime);
@@ -856,7 +894,7 @@ app.get("/management", async (req, res) => {
   const Cookies = req.cookies;
   if (await Authorised(Cookies["Auth"], pool)) {
     //Read settings.json and parse json
-    let settings = fs.readFileSync(__dirname + "/Settings.json");
+    let settings = fs.readFileSync(process.env.SettingsPath);
     settings = JSON.parse(settings);
     res.render(__dirname + "/AdminPages/management.ejs", {
       LockAccounts: "(" + settings.New_Users.LockonCreate + ")",
@@ -1096,6 +1134,7 @@ app.post("/api/projects/:project/visibility", (req, res) => {
     pool.query(sql, [project]);
     res.sendStatus(204);
     Logs(req, 204, StartTime);
+    ShowResults();
   }
 });
 
@@ -1131,6 +1170,10 @@ app.post("/api/user/create", async (req, res) => {
     res.send("Email is too long");
     Logs(req, 400, StartTime);
     return;
+  } else if (username != filter.clean(username)) {
+    res.send("Username contains banned words");
+    Logs(req, 400, StartTime);
+    return;
   }
   //Check if username is taken
   let sql = `SELECT count(*) FROM Users WHERE Username = ? OR Email = ?`;
@@ -1142,7 +1185,7 @@ app.post("/api/user/create", async (req, res) => {
   }
 
   //Read and parse json file
-  const data = fs.readFileSync("Settings.json");
+  const data = fs.readFileSync(process.env.SettingsPath);
   const settings = JSON.parse(data);
   let Locked = 0;
   if (settings.New_Users.LockonCreate == true) {
@@ -1398,19 +1441,19 @@ app.get("/api/avatar/:pfp", async (req, res) => {
 app.get("/api/quickActions/LockonCreate", async (req, res) => {
   const StartTime = new Date().getTime();
   if ((await Authorised(req.cookies["Auth"], pool)) == true) {
-    const data = fs.readFileSync(__dirname + "/Settings.json");
+    const data = fs.readFileSync(process.env.SettingsPath);
     const Settings = JSON.parse(data);
     if (Settings.New_Users.LockonCreate == false) {
       //Enables lock on create
       Settings.New_Users.LockonCreate = true;
       res.send({ status: true, error: false });
-      fs.writeFileSync(__dirname + "/Settings.json", JSON.stringify(Settings));
+      fs.writeFileSync(process.env.SettingsPath, JSON.stringify(Settings));
       Logs(req, 200, StartTime);
     } else {
       //Disables lock on create
       Settings.New_Users.LockonCreate = false;
       res.send({ status: false, error: false });
-      fs.writeFileSync(__dirname + "/Settings.json", JSON.stringify(Settings));
+      fs.writeFileSync(process.env.SettingsPath, JSON.stringify(Settings));
       Logs(req, 200, StartTime);
     }
   } else {
@@ -1419,10 +1462,29 @@ app.get("/api/quickActions/LockonCreate", async (req, res) => {
   }
 });
 
-app.listen(process.env.PORT, () => {
-  console.log(`Server is running on http://localhost:${process.env.PORT}`);
+app.get("/api/quickActions/CommentCreation", async (req, res) => {
+  const StartTime = new Date().getTime();
+  if ((await Authorised(req.cookies["Auth"], pool)) == true) {
+    const data = fs.readFileSync(process.env.SettingsPath);
+    const Settings = JSON.parse(data);
+    if (Settings.Existing_Users.CreateComments == false) {
+      //Enables lock on create
+      Settings.Existing_Users.CreateComments = true;
+      res.send({ status: true, error: false });
+      fs.writeFileSync(process.env.SettingsPath, JSON.stringify(Settings));
+      Logs(req, 200, StartTime);
+    } else {
+      //Disables lock on create
+      Settings.Existing_Users.CreateComments = false;
+      res.send({ status: false, error: false });
+      fs.writeFileSync(process.env.SettingsPath, JSON.stringify(Settings));
+      Logs(req, 200, StartTime);
+    }
+  } else {
+    res.send({ status: false, error: true, message: "Not an admin" });
+    Logs(req, 401, StartTime);
+  }
 });
-
 //Interval
 async function RevalidateLikes() {
   let sql = "SELECT Unique_ID FROM Comments";
@@ -1445,6 +1507,12 @@ async function RevalidateLikes() {
     pool.query(sql, [count[0]["count(*)"], result[i].ID]);
   }
 }
+
+RevalidateLikes();
+
+app.listen(process.env.PORT, () => {
+  console.log(`Server is running on http://localhost:${process.env.PORT}`);
+});
 
 //RevalidateLikes();
 //setInterval(RevalidateLikes, 1000 * 60 * 60); //Checks every hour

@@ -1,1 +1,1 @@
-{"New_Users":{"LockonCreate":false,"LockUntilEmailVerified":false,"LockIfUsernameStartsWith":[]},"Existing_Users":{"CreateComments":false,"ChangePfp":false}}
+{"New_Users":{"LockonCreate":false,"LockUntilEmailVerified":false,"LockIfUsernameStartsWith":[]},"Existing_Users":{"CreateComments":true,"ChangePfp":false}}

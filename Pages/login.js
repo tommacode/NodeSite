@@ -27,15 +27,21 @@ fetch("/api/user")
       }
     } else {
       if (window.location.href.includes("/projects/")) {
-        document.getElementById("likeBtn").disabled = true;
         document.querySelector(".borders h3").style.display = "none";
         document.querySelector(".borders form").style.display = "none";
         document.getElementById(
           "commentMessage"
         ).innerHTML = `<a class="listLink" href="/login">Login</a> to comment`;
-        document.querySelectorAll("#comments button").forEach((btn) => {
-          btn.disabled = true;
+        //Disable the functions to like on click
+        document.querySelectorAll(".CommentLikeBtn").forEach((element) => {
+          element.onclick = function () {
+            return false;
+          };
         });
+
+        document.getElementById("likeBtn").onclick = function () {
+          return false;
+        };
       }
     }
 

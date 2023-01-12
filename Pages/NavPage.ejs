@@ -30,11 +30,7 @@
     <link rel="stylesheet" href="css.css" />
   </head>
   <body>
-    <div id="LoadingScreen">
-      <div id="dots" class="center"></div>
-      <p class="center">Loading epic content</p>
-    </div>
-    <div id="content">
+    <div>
       <nav>
         <a href="/login" class="listLink" style="font-size: 1rem" id="loginInfo"
           >Not logged in</a
@@ -59,7 +55,16 @@
         />
       </div>
       <!--Project Thumbnails-->
-      <div id="projects"></div>
+      <div id="projects">
+        <% for (i = 0; i < Articles.length; i++) { %>
+          <div class="borders" >
+            <a href="/projects/<%= Articles[i].Title.replaceAll(" ", "-") %>" style="color: inherit;">
+              <p style="float: right;"><%= Articles[i].Time %></p>
+              <h3><%= Articles[i].Title %></h3>
+              <p><%= Articles[i].Appetizer %></p>
+            </a>
+          </div> <%} %>
+      </div>
       <div id="footer">
         <h3>Footer</h3>
         <!--Links-->
@@ -84,68 +89,6 @@
         </ul>
       </div>
       <script>
-        //wait for a few seconds then hide the loading screen and show the content
-        function HideLoadingScreen() {
-          document.getElementById("content").style.display = "block";
-          document.getElementById("LoadingScreen").style.display = "none";
-        }
-        //Send http request to get the projects
-        var http = new XMLHttpRequest();
-        http.open("GET", "/api/projects", true);
-        http.send();
-        http.onreadystatechange = function () {
-          if (this.readyState == 4 && this.status == 200) {
-            var projects = JSON.parse(this.responseText);
-            //reverse for loop
-            for (var i = projects.length - 1; i >= 0; i--) {
-              //check if a value is undefined
-              if (projects[i].Status == "0") {
-                //skip to the next iteration
-                continue;
-              }
-              var project = projects[i];
-              var projectDiv = document.createElement("div");
-              projectDiv.id = "project";
-              //Make projectdiv inherit color
-              projectDiv.style.color = "inherit";
-              var Time = project.Time;
-              //Change the month to words
-              var month = Time.substring(5, 7);
-              parseInt(month);
-              var monthNames = [
-                "January",
-                "February",
-                "March",
-                "April",
-                "May",
-                "June",
-                "July",
-                "August",
-                "September",
-                "October",
-                "November",
-                "December",
-              ];
-              var monthName = monthNames[month - 1];
-              var Time =
-                monthName +
-                " " +
-                Time.substring(8, 10) +
-                ", " +
-                Time.substring(0, 4);
-
-              var link = project.Title.replaceAll(" ", "-");
-              projectDiv.innerHTML = `<a href="/projects/${link}"><p style='float: right;'>${Time}</p><h3>${project.Title}</h3><p>${project.Appetizer}</p></a>`;
-              document.getElementById("projects").appendChild(projectDiv);
-            }
-            HideLoadingScreen();
-          } else {
-            //If the request failed
-            document.getElementById("LoadingScreen").innerHTML =
-              "<h1>Failed to load projects</h1>";
-          }
-        };
-        //Search
         function Search() {
           var search = document.getElementById("searchBar").value;
           var projects = document.getElementById("projects").children;

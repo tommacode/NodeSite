@@ -24,13 +24,13 @@
       name="twitter:title"
       property="og:title"
       itemprop="name"
-      content="Read the full article on https://tomblake.me/articles"
+      content="<%= Title %>"
     />
     <meta
       name="twitter:description"
       property="og:description"
       itemprop="description"
-      content="Read the full article on https://tomblake.me/articles"
+      content="<%= Appetizer %>"
     />
     <link rel="stylesheet" href="../../../css.css" />
     <link rel="stylesheet" href="../../../optionalStyling.css" />
@@ -66,10 +66,10 @@
             text-decoration: none;
             cursor: pointer;
           "
-          id="heart"
+          id="likeBtn"
           >♥</a
         >
-        <p id="likeBtn"><%= Likes %></p>
+        <p id="likeBtnCount"><%= Likes %></p>
         <% } else { %>
         <a
           onclick="like(ArticleLikeTimeArray)"
@@ -79,19 +79,16 @@
             text-decoration: none;
             cursor: pointer;
           "
-          id="heart"
+          id="likeBtn"
           >♡</a
         >
-        <p id="likeBtn"><%= Likes %></p>
+        <p id="likeBtnCount"><%= Likes %></p>
         <% } %>
       </div>
 
-      <div id="projects">
-        <div class="borders">
-          <h3><%= Appetizer %></h3>
-          <!--Allow there to be html tags put in the content text-->
-          <p id="content-text"><%- Content %></p>
-        </div>
+      <div class="borders">
+        <h3><%= Appetizer %></h3>
+        <p id="content-text"><%- Content %></p>
       </div>
       <div class="borders" id="WriteComment">
         <h3 id="commentMessage">Write a comment:</h3>
@@ -134,21 +131,49 @@
           <p style="word-wrap: break-word; max-width: 80%">
             <%= Comments[i].Content %>
           </p>
-          <button
-            id="<%= Comments[i].Unique_id %>"
-            onclick="LikeComment('<%= Comments[i].Unique_id %>')"
-          >
-            Likes: <%= Comments[i].Likes %>
-          </button>
           <% if (Comments[i].ID == UserID || SudoUser == true) { %>
           <button
-            id="<%= Comments[i].Unique_id %>"
             class="clearBtn"
             onclick="DeleteComment('<%= Comments[i].Unique_id %>')"
           >
             Delete
           </button>
           <% } %>
+          <div id="Like">
+            <% if (Comments[i].Liked == true) { %>
+            <a
+              class="CommentLikeBtn"
+              onclick="LikeComment('<%= Comments[i].Unique_id %>')"
+              style="
+                font-size: 2rem;
+                color: var(--text-color);
+                text-decoration: none;
+                cursor: pointer;
+              "
+              id="<%- Comments[i].Unique_id %>"
+              >♥</a
+            >
+            <p id="<%- Comments[i].Unique_id %>Count">
+              <%= Comments[i].Likes %>
+            </p>
+            <% } else { %>
+            <a
+              class="CommentLikeBtn"
+              onclick="LikeComment('<%= Comments[i].Unique_id %>')"
+              style="
+                font-size: 2rem;
+                color: var(--text-color);
+                text-decoration: none;
+                cursor: pointer;
+              "
+              id="<%- Comments[i].Unique_id %>"
+              >♡</a
+            >
+            <p id="<%- Comments[i].Unique_id %>Count">
+              <%= Comments[i].Likes %>
+            </p>
+            <% } %>
+          </div>
           <hr />
           <% } %>
         </div>
@@ -213,6 +238,8 @@
       function like(ArticleLikeTimeArray) {
         const RateLimit = ArticleRateLimit(ArticleLikeTimeArray);
         if (RateLimit == true) {
+          Likes = document.getElementById("likeBtnCount").innerHTML;
+          Likes = parseInt(Likes);
           //Send http request to the server
           var http = new XMLHttpRequest();
           var currentUrl = window.location.href;
@@ -226,13 +253,13 @@
               if (response.Status == "Added") {
                 //Add one to the like value
                 Likes++;
-                document.getElementById("heart").innerHTML = "♥";
-                document.getElementById("likeBtn").innerHTML = `${Likes}`;
+                document.getElementById("likeBtn").innerHTML = "♥";
+                document.getElementById("likeBtnCount").innerHTML = `${Likes}`;
               } else if (response.Status == "Removed") {
                 //Remove one from the like value
                 Likes--;
-                document.getElementById("heart").innerHTML = "♡";
-                document.getElementById("likeBtn").innerHTML = `${Likes}`;
+                document.getElementById("likeBtn").innerHTML = "♡";
+                document.getElementById("likeBtnCount").innerHTML = `${Likes}`;
               }
             }
           };
@@ -302,8 +329,13 @@
           http.onreadystatechange = function () {
             if (this.readyState == 4 && this.status == 200) {
               let response = JSON.parse(this.responseText);
-              document.getElementById(id).innerHTML =
-                "Likes: " + response.Status;
+              document.getElementById(`${id}Count`).innerHTML = response.Status;
+              LikeBtn = document.getElementById(id);
+              if (response.Action == "Added") {
+                LikeBtn.innerHTML = "♥";
+              } else if (response.Action == "Removed") {
+                LikeBtn.innerHTML = "♡";
+              }
             }
           };
         }

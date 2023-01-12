@@ -77,8 +77,9 @@
           >Lock New Accounts <%= LockAccounts %></a
         >
         <a
-          href=""
+          onclick="CommentCreation()"
           class="clearBtn"
+          id="CommentCreation"
           style="float: none; margin: 0 2vw; text-decoration: none"
           >Allow New Comments <%= NewComments %></a
         >
@@ -112,6 +113,19 @@
             if (data.error == false) {
               document.getElementById("LockNewAccounts").innerHTML =
                 "Lock New Accounts (" + data.status + ")";
+            } else if (data.error == true) {
+              alert("Error: " + data.message);
+            }
+          });
+      }
+
+      function CommentCreation() {
+        fetch("/api/quickActions/CommentCreation")
+          .then((res) => res.json())
+          .then((data) => {
+            if (data.error == false) {
+              document.getElementById("CommentCreation").innerHTML =
+                "Allow New Comments (" + data.status + ")";
             } else if (data.error == true) {
               alert("Error: " + data.message);
             }

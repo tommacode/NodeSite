@@ -63,11 +63,15 @@
             class="textField"
           />
           <br />
-          <button onclick="Visibility()" id="Visibility">Public</button>
-          <br />
           <a type="button" onclick="SubmitNew()" id="clearBtn">Create</a>
         </form>
         <p style="display: none" id="Response"></p>
+        <a
+          id="VisOutput"
+          onclick="VisChange()"
+          style="text-decoration: none; cursor: pointer"
+          >Public</a
+        >
       </div>
       <div class="borders">
         <p id="previewContent">Preview</p>
@@ -160,6 +164,7 @@
               target="_blank"
               href="https://tomhasawebsite.com"
               class="listLink"
+            >
               >Other Website</a
             >
           </li>
@@ -167,22 +172,21 @@
         </ul>
       </div>
       <script>
-        //Post data to the server
-        function Visibility() {
-          button = document.getElementById("Visibility");
-          if (button.innerHTML == "Public") {
-            button.innerHTML = "Private";
+        function VisChange() {
+          var vis = document.getElementById("VisOutput").innerHTML;
+          if (vis == "Public") {
+            document.getElementById("VisOutput").innerHTML = "Private";
           } else {
-            button.innerHTML = "Public";
+            document.getElementById("VisOutput").innerHTML = "Public";
           }
         }
+
         function SubmitNew() {
           var title = document.getElementById("title").value;
           var appetizer = document.getElementById("appetizer").value;
           var content = document.getElementById("Content-field").value;
           var tags = document.getElementById("tags").value;
-          var visibility = document.getElementById("Visibility").innerHTML;
-          console.log(visibility);
+          var visibility = document.getElementById("VisOutput").innerHTML;
           var data = {
             title: title,
             appetizer: appetizer,

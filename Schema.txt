@@ -88,5 +88,3 @@ DELETE FROM Users WHERE Username = '';
 All changes to the tables
 
 ALTER TABLE Logs ADD COLUMN ProcessTime INT DEFAULT 0;
-
-
