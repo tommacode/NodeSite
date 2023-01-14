@@ -70,6 +70,13 @@ create table commentLikes(
     UserID INT
 );
 
+create table Views(
+    ID INT AUTO_INCREMENT PRIMARY KEY,
+    Time TIMESTAMP,
+    Project INT,
+    UserID INT
+);
+
 
 Essential database actions that can't be done in the ui
 
@@ -89,8 +96,10 @@ DELETE FROM Users WHERE Username = '';
 
 All changes to the tables
 
-ALTER TABLE Users ADD COlUMN ProfilePictureLastUpdated TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+create table Views(
+    ID INT AUTO_INCREMENT PRIMARY KEY,
+    Time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    Project INT,
+    UserID INT
+);
 
-ALTER TABLE Comments ADD COLUMN Deleted INT DEFAULT 0;
-ALTER TABLE Comments ADD COLUMN DeletedAt TIMESTAMP;
-ALTER TABLE Comments ADD COLUMN DeletedBy INT;

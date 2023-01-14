@@ -341,19 +341,7 @@ hr {
   color: var(--text-color);
 }
 
-/* Put both elements in #Like on the same line */
-#Like {
-  display: flex;
-  flex-direction: row;
-  /* Put the text on the left */
-  justify-content: flex-start;
-  /* Make sure teh elements are vertically aligned */
-  align-items: center
-}
 
-#Like #likeBtn {
-  margin-left: 1vw;
-}
 
 #title,
 #appetizer,
@@ -371,6 +359,20 @@ hr {
   min-width: 45vw;
   max-width: 45vw;
   min-height: 30vh;
+}
+
+/* Put both elements in #Like on the same line */
+#Like {
+  display: flex;
+  flex-direction: row;
+  /* Put the text on the left */
+  justify-content: flex-start;
+  /* Make sure teh elements are vertically aligned */
+  align-items: center;
+}
+
+#Like #likeBtn {
+  margin-left: 1vw;
 }
 
 @-webkit-keyframes spin {
@@ -399,6 +401,10 @@ hr {
   img {
     max-width: 80vw;
     max-height: 80vh;
+  }
+
+  #ArticleStats {
+    width: 20vw;
   }
 }
 
@@ -436,5 +442,9 @@ hr {
 
   .borders {
     padding: 4vh 2vw;
+  }
+
+  #ArticleStats {
+    width: 30vw;
   }
 }

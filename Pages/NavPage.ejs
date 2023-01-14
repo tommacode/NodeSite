@@ -61,9 +61,15 @@
             <a href="/projects/<%= Articles[i].Title.replaceAll(" ", "-") %>" style="color: inherit;">
               <p style="float: right;"><%= Articles[i].Time %></p>
               <h3><%= Articles[i].Title %></h3>
+              <% if (User == true) {%>
+              <% if (Articles[i].Viewed == false) { %>
+              <p style="float: right;">Unread</p>
+              <% } %>
+              <% } %>
               <p><%= Articles[i].Appetizer %></p>
             </a>
-          </div> <%} %>
+          </div> 
+        <%} %>
       </div>
       <div id="footer">
         <h3>Footer</h3>

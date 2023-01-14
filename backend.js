@@ -88,8 +88,8 @@ async function Logs(req, StatusCode, StartTime) {
     forwardedfor = ip;
   }
   //Get User Agent
-  const useragent = req.headers["user-agent"];
-  if (useragent.length > 255) {
+  let useragent = req.headers["user-agent"];
+  if (useragent.length > 255 && useragent != undefined) {
     useragent = useragent.slice(0, 255);
   }
   //Get Method
@@ -276,16 +276,46 @@ app.get("/", (req, res) => {
 
 app.get("/projects", async (req, res) => {
   const StartTime = new Date().getTime();
-  let sql = `SELECT Title, Content, Appetizer, Time FROM Projects WHERE Status = 1 ORDER BY ID`;
+  let sql = `SELECT ID, Title, Content, Appetizer, Time FROM Projects WHERE Status = 1 ORDER BY ID DESC`;
   let [Articles] = await pool.query(sql);
-  for (let i = 0; i < Articles.length; i++) {
-    Articles[i].Time = Articles[i].Time.toLocaleString("en-GB", {
+  for (let Article of Articles) {
+    Article.Time = Article.Time.toLocaleString("en-GB", {
       day: "numeric",
       month: "long",
       year: "numeric",
     });
   }
-  res.render(__dirname + "/Pages/NavPage.ejs", { Articles: Articles });
+  UserID = await GetUserID(req.cookies.Auth, req);
+  if (UserID == null) {
+    res.render(__dirname + "/Pages/NavPage.ejs", {
+      Articles: Articles,
+      User: false,
+    });
+    Logs(req, 200, StartTime);
+    return;
+  }
+  sql = `SELECT count(*) FROM Views WHERE UserID = ?`;
+  const [check] = await pool.query(sql, [UserID]);
+  if (check[0]["count(*)"] == 0) {
+    for (i = 0; i < Articles.length; i++) {
+      Articles[i].Viewed = false;
+    }
+    res.render(__dirname + "/Pages/NavPage.ejs", {
+      Articles: Articles,
+      User: true,
+    });
+    Logs(req, 200, StartTime);
+    return;
+  }
+  for (i = 0; i < Articles.length; i++) {
+    sql = `SELECT count(*) FROM Views WHERE UserID = ? AND Project = ?`;
+    const [view] = await pool.query(sql, [UserID, Articles[i].ID]);
+    Articles[i].Viewed = view[0]["count(*)"] == 1;
+  }
+  res.render(__dirname + "/Pages/NavPage.ejs", {
+    Articles: Articles,
+    User: true,
+  });
   Logs(req, 200, StartTime);
 });
 
@@ -373,7 +403,7 @@ app.get("/myAccount", async (req, res) => {
       [UserID]
     );
     let RateLimit;
-    if ((await Authorised(req.cookies.Auth, pool)) == false) {
+    if (!(await Authorised(req.cookies.Auth, pool))) {
       let LastUpdated = pfp[0].ProfilePictureLastUpdated;
       let currentTime = new Date().getTime();
       if (currentTime - LastUpdated > 10 * 60 * 1000) {
@@ -436,18 +466,15 @@ app.get("/projects/*", async (req, res) => {
     Logs(req, 404, StartTime);
     return;
   }
-  const [projectID] = await pool.query(
-    "SELECT ID FROM Projects WHERE Title = ?",
-    [project]
-  );
+  const ProjectID = result[0].ID;
   const SudoUser = await Authorised(req.cookies.Auth, pool);
   let UserID = await GetUserID(req.cookies.Auth, req);
   if (SudoUser == false) {
-    sql = `SELECT Users.Username,Users.Sudo,Comments.Content,Comments.Unique_id,ProfilePicture,Comments.Time,Users.ID,Comments.Deleted FROM Comments,Users WHERE Comments.UserID=Users.ID AND Project = ? AND DELETED = 0 ORDER BY Likes DESC`;
+    sql = `SELECT Users.Username,Users.Sudo,Comments.Content,Comments.Unique_id,ProfilePicture,Comments.Time,Users.ID,Comments.Deleted FROM Comments,Users WHERE Comments.UserID=Users.ID AND Project = ? AND DELETED = 0 ORDER BY Likes DESC LIMIT 100`;
   } else {
-    sql = `SELECT Users.Username,Users.Sudo,Comments.Content,Comments.Unique_id,ProfilePicture,Comments.Time,Users.ID,Comments.Deleted,Comments.DeletedAt FROM Comments,Users WHERE Comments.UserID=Users.ID AND Project = ? ORDER BY Likes DESC`;
+    sql = `SELECT Users.Username,Users.Sudo,Comments.Content,Comments.Unique_id,ProfilePicture,Comments.Time,Users.ID,Comments.Deleted,Comments.DeletedAt FROM Comments,Users WHERE Comments.UserID=Users.ID AND Project = ? ORDER BY Likes DESC LIMIT 100`;
   }
-  let [comments] = await pool.query(sql, [projectID[0].ID]);
+  let [comments] = await pool.query(sql, [ProjectID]);
   for (let i = 0; i < comments.length; i++) {
     try {
       comments[i].Content = filter.clean(comments[i].Content);
@@ -492,7 +519,7 @@ app.get("/projects/*", async (req, res) => {
     UserID = 0;
   }
   sql = `SELECT * FROM projectLikes WHERE Project = ? AND UserID = ?`;
-  let [liked] = await pool.query(sql, [projectID[0].ID, UserID]);
+  let [liked] = await pool.query(sql, [ProjectID, UserID]);
   let Liked;
   if (liked.length == 0) {
     Liked = false;
@@ -500,7 +527,7 @@ app.get("/projects/*", async (req, res) => {
     Liked = true;
   }
   //Find add liked: true or false to the comments if the user is logged in
-  if (UserID != null) {
+  if (UserID != null && UserID != 0) {
     for (let i = 0; i < comments.length; i++) {
       sql = `SELECT * FROM commentLikes WHERE Unique_id = ? AND UserID = ?`;
       let [liked] = await pool.query(sql, [comments[i].Unique_id, UserID]);
@@ -510,8 +537,14 @@ app.get("/projects/*", async (req, res) => {
         comments[i].Liked = true;
       }
     }
+    //If the user hasn't viewd the article before, add a view
+    sql = `SELECT * FROM Views WHERE Project = ? AND UserID = ?`;
+    let [viewed] = await pool.query(sql, [ProjectID, UserID]);
+    if (viewed.length == 0) {
+      sql = `INSERT INTO Views (Project,UserID) VALUES (?,?)`;
+      pool.query(sql, [ProjectID, UserID]);
+    }
   }
-
   //Replace <home> and </home> with ""
   result[0].Content = result[0].Content.replace("<home>", "");
   result[0].Content = result[0].Content.replace("</home>", "");
@@ -626,7 +659,7 @@ app.get("/api/projects/:project/like", LikeLimit, async (req, res) => {
 });
 
 //Comments
-app.post("/api/projects/:project/comment", CommentLimit, async (req, res) => {
+app.post("/api/projects/:project/comment", async (req, res) => {
   const StartTime = new Date().getTime();
   const UserID = await GetUserID(req.cookies["Auth"], req);
   if (UserID == null) {
@@ -1314,7 +1347,7 @@ app.post("/api/user/login", async (req, res) => {
 app.get("/api/user", async (req, res) => {
   const StartTime = new Date();
   const cookie = req.cookies.Auth;
-  res.set("Cache-Control", "private, max-age=10");
+  res.set("Cache-Control", "private, max-age=5");
   let sql = `SELECT * FROM Sessions WHERE Cookie = ?`;
   let [result] = await pool.query(sql, [cookie]);
   if (result.length == 1) {

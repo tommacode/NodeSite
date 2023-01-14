@@ -31,11 +31,7 @@
     <link rel="stylesheet" href="../../../optionalStyling.css" />
   </head>
   <body>
-    <div id="LoadingScreen">
-      <div class="center" id="dots"></div>
-      <p class="center" id="loadingText">Loading epic content</p>
-    </div>
-    <div id="content">
+    <div>
       <nav>
         <a href="/login" class="listLink" style="font-size: 1rem" id="loginInfo"
           >Not logged in</a
@@ -51,219 +47,207 @@
       </header>
       <!--Project Thumbnails-->
       <p style="float: right" id="date"><%= Time %></p>
-      <div id="Like">
-        <% if (Liked == true) { %>
-        <a
-          onclick="like(ArticleLikeTimeArray)"
-          style="
-            font-size: 2rem;
-            color: var(--text-color);
-            text-decoration: none;
-            cursor: pointer;
-          "
-          id="likeBtn"
-          >♥</a
+    </div>
+    <div id="Like">
+      <% if (Liked == true) { %>
+      <a
+        onclick="like(ArticleLikeTimeArray)"
+        style="
+          font-size: 2rem;
+          color: var(--text-color);
+          text-decoration: none;
+          cursor: pointer;
+        "
+        id="likeBtn"
+        >♥</a
+      >
+      <p id="likeBtnCount"><%= Likes %></p>
+      <% } else { %>
+      <a
+        onclick="like(ArticleLikeTimeArray)"
+        style="
+          font-size: 2rem;
+          color: var(--text-color);
+          text-decoration: none;
+          cursor: pointer;
+        "
+        id="likeBtn"
+        >♡</a
+      >
+      <p id="likeBtnCount"><%= Likes %></p>
+      <% } %>
+    </div>
+
+    <div class="borders">
+      <h3><%= Appetizer %></h3>
+      <p id="content-text"><%- Content %></p>
+    </div>
+    <div class="borders" id="WriteComment">
+      <h3 id="commentMessage">Write a comment:</h3>
+      <form class="comment">
+        <textarea
+          style="width: 45vw"
+          id="comment"
+          placeholder="Comment"
+          oninput="CommentCharCount()"
+        ></textarea>
+        <p id="CommentChar">0/400</p>
+        <button
+          style="float: none"
+          class="clearBtn"
+          id="SubmitComment"
+          type="button"
+          onclick="addComment()"
         >
-        <p id="likeBtnCount"><%= Likes %></p>
-        <% } else { %>
-        <a
-          onclick="like(ArticleLikeTimeArray)"
-          style="
-            font-size: 2rem;
-            color: var(--text-color);
-            text-decoration: none;
-            cursor: pointer;
-          "
-          id="likeBtn"
-          >♡</a
+          Add Comment
+        </button>
+        <p id="response"></p>
+      </form>
+    </div>
+    <div id="comments" class="borders">
+      <h3 id="commentTitle">Comments</h3>
+      <!--Use ejs to render the comments the same as the javascript would-->
+      <div id="commentList">
+        <% for (var i = 0; i < Comments.length; i++) { %> <% if
+        (Comments[i].Deleted == false) { %>
+        <img
+          class="CommentProfilePicture"
+          src="/api/avatar/<%= Comments[i].ProfilePicture %>"
+          alt="Profile Picture"
+          style="float: left"
+        />
+        <p style="float: right"><%= Comments[i].Time %></p>
+        <h4 style="float: left"><%- Comments[i].Username %></h4>
+        <br />
+        <p style="float: right"></p>
+        <p style="word-wrap: break-word; max-width: 80%">
+          <%= Comments[i].Content %>
+        </p>
+        <% if (Comments[i].ID == UserID || SudoUser == true) { %>
+        <button
+          class="clearBtn"
+          onclick="DeleteComment('<%= Comments[i].Unique_id %>')"
         >
-        <p id="likeBtnCount"><%= Likes %></p>
+          Delete
+        </button>
         <% } %>
-      </div>
-
-      <div class="borders">
-        <h3><%= Appetizer %></h3>
-        <p id="content-text"><%- Content %></p>
-      </div>
-      <div class="borders" id="WriteComment">
-        <h3 id="commentMessage">Write a comment:</h3>
-        <form class="comment">
-          <textarea
-            style="width: 45vw"
-            id="comment"
-            placeholder="Comment"
-            oninput="CommentCharCount()"
-          ></textarea>
-          <p id="CommentChar">0/400</p>
-          <button
-            style="float: none"
-            class="clearBtn"
-            id="SubmitComment"
-            type="button"
-            onclick="addComment()"
+        <div id="Like">
+          <% if (Comments[i].Liked == true) { %>
+          <a
+            class="CommentLikeBtn"
+            onclick="LikeComment('<%= Comments[i].Unique_id %>')"
+            style="
+              font-size: 2rem;
+              color: var(--text-color);
+              text-decoration: none;
+              cursor: pointer;
+            "
+            id="<%- Comments[i].Unique_id %>"
+            >♥</a
           >
-            Add Comment
-          </button>
-          <p id="response"></p>
-        </form>
-      </div>
-      <div id="comments" class="borders">
-        <h3 id="commentTitle">Comments</h3>
-
-        <!--Use ejs to render the comments the same as the javascript would-->
-        <div id="commentList">
-          <% for (var i = 0; i < Comments.length; i++) { %> <% if
-          (Comments[i].Deleted == false) { %>
-          <img
-            class="CommentProfilePicture"
-            src="/api/avatar/<%= Comments[i].ProfilePicture %>"
-            alt="Profile Picture"
-            style="float: left"
-          />
-          <p style="float: right"><%= Comments[i].Time %></p>
-          <h4 style="float: left"><%- Comments[i].Username %></h4>
-          <br />
-          <p style="float: right"></p>
-          <p style="word-wrap: break-word; max-width: 80%">
-            <%= Comments[i].Content %>
-          </p>
-          <% if (Comments[i].ID == UserID || SudoUser == true) { %>
-          <button
-            class="clearBtn"
-            onclick="DeleteComment('<%= Comments[i].Unique_id %>')"
+          <p id="<%- Comments[i].Unique_id %>Count"><%= Comments[i].Likes %></p>
+          <% } else { %>
+          <a
+            class="CommentLikeBtn"
+            onclick="LikeComment('<%= Comments[i].Unique_id %>')"
+            style="
+              font-size: 2rem;
+              color: var(--text-color);
+              text-decoration: none;
+              cursor: pointer;
+            "
+            id="<%- Comments[i].Unique_id %>"
+            >♡</a
           >
-            Delete
-          </button>
+          <p id="<%- Comments[i].Unique_id %>Count"><%= Comments[i].Likes %></p>
           <% } %>
-          <div id="Like">
-            <% if (Comments[i].Liked == true) { %>
-            <a
-              class="CommentLikeBtn"
-              onclick="LikeComment('<%= Comments[i].Unique_id %>')"
-              style="
-                font-size: 2rem;
-                color: var(--text-color);
-                text-decoration: none;
-                cursor: pointer;
-              "
-              id="<%- Comments[i].Unique_id %>"
-              >♥</a
-            >
-            <p id="<%- Comments[i].Unique_id %>Count">
-              <%= Comments[i].Likes %>
-            </p>
-            <% } else { %>
-            <a
-              class="CommentLikeBtn"
-              onclick="LikeComment('<%= Comments[i].Unique_id %>')"
-              style="
-                font-size: 2rem;
-                color: var(--text-color);
-                text-decoration: none;
-                cursor: pointer;
-              "
-              id="<%- Comments[i].Unique_id %>"
-              >♡</a
-            >
-            <p id="<%- Comments[i].Unique_id %>Count">
-              <%= Comments[i].Likes %>
-            </p>
-            <% } %>
-          </div>
-          <hr />
-          <% } %> <% } %>
         </div>
+        <hr />
+        <% } %> <% } %>
       </div>
-      <% if (SudoUser == true) { %>
-      <div class="borders">
-        <h3>Deleted Comments</h3>
-        <div id="commentList">
-          <% for (var i = 0; i < Comments.length; i++) { %> <% if
-          (Comments[i].Deleted == true) { %>
-          <img
-            class="CommentProfilePicture"
-            src="/api/avatar/<%= Comments[i].ProfilePicture %>"
-            alt="Profile Picture"
-            style="float: left"
-          />
-          <p style="float: right"><%= Comments[i].Time %></p>
-          <h4 style="float: left"><%- Comments[i].Username %></h4>
-          <br />
-          <p style="float: right"></p>
-          <p style="word-wrap: break-word; max-width: 80%">
-            <%= Comments[i].Content %>
-          </p>
-          <button
-            class="clearBtn"
-            onclick="RestoreComment('<%= Comments[i].Unique_id %>')"
+    </div>
+    <% if (SudoUser == true) { %>
+    <div class="borders">
+      <h3>Deleted Comments</h3>
+      <div id="commentList">
+        <% for (var i = 0; i < Comments.length; i++) { %> <% if
+        (Comments[i].Deleted == true) { %>
+        <img
+          class="CommentProfilePicture"
+          src="/api/avatar/<%= Comments[i].ProfilePicture %>"
+          alt="Profile Picture"
+          style="float: left"
+        />
+        <p style="float: right"><%= Comments[i].Time %></p>
+        <h4 style="float: left"><%- Comments[i].Username %></h4>
+        <br />
+        <p style="float: right"></p>
+        <p style="word-wrap: break-word; max-width: 80%">
+          <%= Comments[i].Content %>
+        </p>
+        <button
+          class="clearBtn"
+          onclick="RestoreComment('<%= Comments[i].Unique_id %>')"
+        >
+          Restore
+        </button>
+        <div id="Like">
+          <% if (Comments[i].Liked == true) { %>
+          <a
+            class="CommentLikeBtn"
+            onclick="LikeComment('<%= Comments[i].Unique_id %>')"
+            style="
+              font-size: 2rem;
+              color: var(--text-color);
+              text-decoration: none;
+              cursor: pointer;
+            "
+            id="<%- Comments[i].Unique_id %>"
+            >♥</a
           >
-            Restore
-          </button>
-          <div id="Like">
-            <% if (Comments[i].Liked == true) { %>
-            <a
-              class="CommentLikeBtn"
-              onclick="LikeComment('<%= Comments[i].Unique_id %>')"
-              style="
-                font-size: 2rem;
-                color: var(--text-color);
-                text-decoration: none;
-                cursor: pointer;
-              "
-              id="<%- Comments[i].Unique_id %>"
-              >♥</a
-            >
-            <p id="<%- Comments[i].Unique_id %>Count">
-              <%= Comments[i].Likes %>
-            </p>
-            <% } else { %>
-            <a
-              class="CommentLikeBtn"
-              onclick="LikeComment('<%= Comments[i].Unique_id %>')"
-              style="
-                font-size: 2rem;
-                color: var(--text-color);
-                text-decoration: none;
-                cursor: pointer;
-              "
-              id="<%- Comments[i].Unique_id %>"
-              >♡</a
-            >
-            <p id="<%- Comments[i].Unique_id %>Count">
-              <%= Comments[i].Likes %>
-            </p>
-            <% } %>
-          </div>
-          <p style="float: right">Deleted At: <%= Comments[i].DeletedAt %></p>
-          <br />
-          <hr />
-          <% } %> <% } %>
+          <p id="<%- Comments[i].Unique_id %>Count"><%= Comments[i].Likes %></p>
+          <% } else { %>
+          <a
+            class="CommentLikeBtn"
+            onclick="LikeComment('<%= Comments[i].Unique_id %>')"
+            style="
+              font-size: 2rem;
+              color: var(--text-color);
+              text-decoration: none;
+              cursor: pointer;
+            "
+            id="<%- Comments[i].Unique_id %>"
+            >♡</a
+          >
+          <p id="<%- Comments[i].Unique_id %>Count"><%= Comments[i].Likes %></p>
+          <% } %>
         </div>
-        <% } %>
+        <p style="float: right">Deleted At: <%= Comments[i].DeletedAt %></p>
+        <br />
+        <hr />
+        <% } %> <% } %>
       </div>
-      <div id="footer">
-        <h3>Footer</h3>
-        <!--Links-->
-        <ul class="linkBar">
-          <li>
-            <a
-              target="_blank"
-              href="https://github.com/tommacode"
-              class="listLink"
-              >My Github</a
-            >
-          </li>
-          <li>
-            <a
-              target="_blank"
-              href="https://tomhasawebsite.com"
-              class="listLink"
-              >Other Website</a
-            >
-          </li>
-          <li><a href="#" class="listLink">Back to the top!</a></li>
-        </ul>
-      </div>
+      <% } %>
+    </div>
+    <div id="footer">
+      <h3>Footer</h3>
+      <!--Links-->
+      <ul class="linkBar">
+        <li>
+          <a
+            target="_blank"
+            href="https://github.com/tommacode"
+            class="listLink"
+            >My Github</a
+          >
+        </li>
+        <li>
+          <a target="_blank" href="https://tomhasawebsite.com" class="listLink"
+            >Other Website</a
+          >
+        </li>
+        <li><a href="#" class="listLink">Back to the top!</a></li>
+      </ul>
     </div>
     <% if (SudoUser == true) { %>
     <script>
@@ -285,14 +269,8 @@
         document.getElementById("CommentChar").innerHTML = charCount + "/400";
         return charCount;
       }
-      //Wait until the content is loaded
-      function HideLoadingScreen() {
-        document.getElementById("content").style.display = "block";
-        document.getElementById("LoadingScreen").style.display = "none";
-      }
       let Likes = document.getElementById("likeBtn").innerHTML;
       Likes = parseInt(Likes);
-      HideLoadingScreen();
       ArticleLikeTimeArray = [];
       function ArticleRateLimit(ArticleLikeTimeArray) {
         var time = new Date().getTime();
