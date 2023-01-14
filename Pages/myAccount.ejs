@@ -59,6 +59,7 @@
         </p>
       </div>
       <div class="borders">
+        <% if (PfpRateLimit == false) { %>
         <h3 id="ChangepfpHeading">Add/Update profile picture</h3>
         <div id="LoadingScreenParent" class="hidden">
           <div style="margin-top: 5vh" id="dots" class="center"></div>
@@ -78,6 +79,10 @@
           <h3>Remove Profile Picture</h3>
           <button onclick="RemovePFP()">Remove</button>
         </div>
+        <p>You can only change your profile picture every 10 minutes</p>
+        <% } else { %>
+        <p>You last updated your profile picture less than 10 minutes ago</p>
+        <% } %>
       </div>
       <div class="borders">
         <h3>Sessions</h3>
@@ -149,6 +154,14 @@
               message = xhr.responseText;
               message = JSON.parse(message);
               alert(message.message);
+              //Show the form again
+              document.getElementById("LoadingScreenParent").style.display =
+                "none";
+              document.getElementById("ChangepfpHeading").style.display =
+                "block";
+              document.getElementById("fileButton").style.display = "block";
+              document.getElementById("submitButton").style.display = "block";
+              document.getElementById("Removepfp").style.display = "block";
             }
           };
         });

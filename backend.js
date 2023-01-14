@@ -44,6 +44,7 @@ app.use(
 
 //Image conversion
 const Jimp = require("jimp");
+const { Console } = require("console");
 
 //Headers
 app.set("x-powered-by", false);
@@ -88,6 +89,9 @@ async function Logs(req, StatusCode, StartTime) {
   }
   //Get User Agent
   const useragent = req.headers["user-agent"];
+  if (useragent.length > 255) {
+    useragent = useragent.slice(0, 255);
+  }
   //Get Method
   const method = req.method;
   //Get Path
@@ -148,9 +152,7 @@ async function Authorised(cookie, pool) {
     return false;
   }
   sudo = sudo[0].Sudo;
-  if (sudo == 1) {
-    return true;
-  }
+  return sudo == 1;
 }
 
 async function GetUserID(cookie, req) {
@@ -367,12 +369,25 @@ app.get("/myAccount", async (req, res) => {
       });
     });
     let [pfp] = await pool.query(
-      "SELECT ProfilePicture FROM Users WHERE ID = ?",
+      "SELECT ProfilePicture, ProfilePictureLastUpdated FROM Users WHERE ID = ?",
       [UserID]
     );
+    let RateLimit;
+    if ((await Authorised(req.cookies.Auth, pool)) == false) {
+      let LastUpdated = pfp[0].ProfilePictureLastUpdated;
+      let currentTime = new Date().getTime();
+      if (currentTime - LastUpdated > 10 * 60 * 1000) {
+        RateLimit = false;
+      } else {
+        RateLimit = true;
+      }
+    } else {
+      RateLimit = false;
+    }
     res.render(__dirname + "/Pages/myAccount", {
       Sessions: Sessions,
       ProfilePicture: pfp[0].ProfilePicture,
+      PfpRateLimit: RateLimit,
     });
     Logs(req, 200, StartTime);
   }
@@ -411,9 +426,9 @@ app.get("/projects/*", async (req, res) => {
   let sql;
   //This check is still used on the management pages to show all articles
   if (await Authorised(cookies["Auth"], pool)) {
-    sql = `SELECT ID,Time,Title,Appetizer,Content,Likes FROM Projects WHERE Title = ?`;
+    sql = `SELECT ID,Time,Title,Appetizer,Content,Likes FROM Projects WHERE Title = ? ORDER BY ID DESC`;
   } else {
-    sql = `SELECT ID,Time,Title,Appetizer,Content,Likes FROM Projects WHERE Title = ? AND Status = 1`;
+    sql = `SELECT ID,Time,Title,Appetizer,Content,Likes FROM Projects WHERE Title = ? AND Status = 1 ORDER BY ID DESC`;
   }
   const [result] = await pool.query(sql, [project]);
   if (result.length == 0) {
@@ -425,11 +440,21 @@ app.get("/projects/*", async (req, res) => {
     "SELECT ID FROM Projects WHERE Title = ?",
     [project]
   );
+  const SudoUser = await Authorised(req.cookies.Auth, pool);
   let UserID = await GetUserID(req.cookies.Auth, req);
-  sql = `SELECT Users.Username,Users.Sudo,Comments.Content,Comments.Unique_id,ProfilePicture,Comments.Time,Users.ID FROM Comments,Users WHERE Comments.UserID=Users.ID AND Project = ? ORDER BY Likes DESC`;
+  if (SudoUser == false) {
+    sql = `SELECT Users.Username,Users.Sudo,Comments.Content,Comments.Unique_id,ProfilePicture,Comments.Time,Users.ID,Comments.Deleted FROM Comments,Users WHERE Comments.UserID=Users.ID AND Project = ? AND DELETED = 0 ORDER BY Likes DESC`;
+  } else {
+    sql = `SELECT Users.Username,Users.Sudo,Comments.Content,Comments.Unique_id,ProfilePicture,Comments.Time,Users.ID,Comments.Deleted,Comments.DeletedAt FROM Comments,Users WHERE Comments.UserID=Users.ID AND Project = ? ORDER BY Likes DESC`;
+  }
   let [comments] = await pool.query(sql, [projectID[0].ID]);
   for (let i = 0; i < comments.length; i++) {
-    comments[i].Content = filter.clean(comments[i].Content);
+    try {
+      comments[i].Content = filter.clean(comments[i].Content);
+    } catch {
+      comments[i].Content = "****";
+    }
+
     if (comments[i].Sudo == 1) {
       comments[i].Username = "&lt " + comments[i].Username + " &gt";
     }
@@ -446,6 +471,15 @@ app.get("/projects/*", async (req, res) => {
     sql = `SELECT count(*) FROM commentLikes WHERE Unique_id = ?`;
     [comments[i].Likes] = await pool.query(sql, [comments[i].Unique_id]);
     comments[i].Likes = comments[i].Likes[0]["count(*)"];
+    if (comments[i].Deleted == 1) {
+      comments[i].DeletedAt = comments[i].DeletedAt.toLocaleString("en-GB", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    }
   }
   let date = new Date(result[0].Time);
   date = date.toLocaleString("en-GB", {
@@ -478,8 +512,6 @@ app.get("/projects/*", async (req, res) => {
     }
   }
 
-  SudoUser = (await Authorised(req.cookies.Auth, pool)) == true;
-
   //Replace <home> and </home> with ""
   result[0].Content = result[0].Content.replace("<home>", "");
   result[0].Content = result[0].Content.replace("</home>", "");
@@ -502,6 +534,7 @@ app.get("/projects/*", async (req, res) => {
 app.get("/photos/:photo", (req, res) => {
   const StartTime = new Date().getTime();
   const photo = req.params.photo;
+  res.setHeader("Expires", new Date(Date.now() + 86400000).toUTCString());
   res.sendFile(process.env.ArticlePhotosPath + photo);
   Logs(req, 200, StartTime);
 });
@@ -753,8 +786,24 @@ app.get("/api/comments/delete/:id", async (req, res) => {
     Logs(req, 401, StartTime);
     return;
   }
-  sql = `DELETE FROM Comments WHERE Unique_id = ?`;
-  pool.query(sql, [id]);
+  const DeletionTime = new Date().toISOString().slice(0, 19).replace("T", " ");
+  sql = `UPDATE Comments SET Deleted = 1, DeletedAt = ?, DeletedBy = ? WHERE Unique_id = ?`;
+  pool.query(sql, [DeletionTime, UserID, id]);
+  res.sendStatus(204);
+  Logs(req, 204, StartTime);
+});
+
+app.get("/api/comments/restore/:id", async (req, res) => {
+  const StartTime = new Date().getTime();
+  if ((await Authorised(req.cookies["Auth"], pool)) == false) {
+    res.sendStatus(401);
+    Logs(req, 401, StartTime);
+    return;
+  }
+
+  await pool.query(`UPDATE Comments SET Deleted = 0 WHERE Unique_id = ?`, [
+    req.params.id,
+  ]);
   res.sendStatus(204);
   Logs(req, 204, StartTime);
 });
@@ -827,12 +876,6 @@ app.post("/api/projects/new", async (req, res) => {
   } else {
     Status = "0";
   }
-
-  //Replace all " with ""
-  title = title.replaceAll('"', '""');
-  appetizer = appetizer.replaceAll('"', '""');
-  Content = Content.replaceAll('"', '""');
-  tags = tags.replaceAll('"', '""');
 
   ShowResults();
 
@@ -1271,6 +1314,7 @@ app.post("/api/user/login", async (req, res) => {
 app.get("/api/user", async (req, res) => {
   const StartTime = new Date();
   const cookie = req.cookies.Auth;
+  res.set("Cache-Control", "private, max-age=10");
   let sql = `SELECT * FROM Sessions WHERE Cookie = ?`;
   let [result] = await pool.query(sql, [cookie]);
   if (result.length == 1) {
@@ -1373,12 +1417,26 @@ app.post("/api/upload/pfp", async (req, res) => {
       Logs(req, 400, StartTime);
       return;
     }
+    if ((await Authorised(req.cookies["Auth"], pool)) == false) {
+      let LastUpdated = pfp[0].ProfilePictureLastUpdated;
+      let currentTime = new Date().getTime();
+      let RateLimit;
+      if (currentTime - LastUpdated < 10 * 60 * 1000) {
+        res.send({
+          status: false,
+          message: "You can only change your profile picture every 10 minutes",
+        });
+        Logs(req, 400, StartTime);
+        return;
+      }
+    }
 
     //By here we have established the file is valid
     const [PFPID] = await pool.query(
       "SELECT ProfilePicture FROM Users WHERE ID = ?",
       [UserID]
     );
+    //This allows the new profile picture to inherit the file name of the old one
     let PictureID = PFPID[0].ProfilePicture;
     if (PictureID == 0) {
       PictureID = crypto.randomBytes(16).toString("hex");
@@ -1387,6 +1445,12 @@ app.post("/api/upload/pfp", async (req, res) => {
         UserID,
       ]);
     }
+    //Get current time in datetime format
+    const CurrentTime = new Date().toISOString().slice(0, 19).replace("T", " ");
+    pool.query("UPDATE Users SET ProfilePictureLastUpdated = ? WHERE ID = ?", [
+      CurrentTime,
+      UserID,
+    ]);
     let fileType = Image.mimetype.split("/")[1];
     //Convert to png if not already
     if (fileType != "png") {
@@ -1437,6 +1501,8 @@ app.get("/api/avatar/:pfp", async (req, res) => {
     Logs(req, 404, StartTime);
     return;
   }
+  //Add expires header for 5 minutes
+  res.set("Expires", new Date(Date.now() + 5 * 60 * 1000).toUTCString());
   res.sendFile(process.env.AvatarPath + pfp + ".png");
   Logs(req, 200, StartTime);
 });
@@ -1489,34 +1555,7 @@ app.get("/api/quickActions/CommentCreation", async (req, res) => {
     Logs(req, 401, StartTime);
   }
 });
-//Interval
-async function RevalidateLikes() {
-  let sql = "SELECT Unique_ID FROM Comments";
-  let [result] = await pool.query(sql);
-  for (i = 0; i < result.length; i++) {
-    sql = "SELECT count(*) FROM Comments WHERE Unique_ID = ?";
-    let [count] = await pool.query(sql, [result[i].Unique_ID]);
-    //Write this value to the database
-    sql = "UPDATE Comments SET Likes = ? WHERE Unique_ID = ?";
-    pool.query(sql, [count[0]["count(*)"], result[i].Unique_ID]);
-  }
-
-  sql = "SELECT ID FROM Projects";
-  [result] = await pool.query(sql);
-  for (i = 0; i < result.length; i++) {
-    sql = "SELECT count(*) FROM projectLikes WHERE Project = ?";
-    let [count] = await pool.query(sql, [result[i].ID]);
-    //Write this value to the database#
-    sql = "UPDATE Projects SET Likes = ? WHERE ID = ?";
-    pool.query(sql, [count[0]["count(*)"], result[i].ID]);
-  }
-}
-
-RevalidateLikes();
 
 app.listen(process.env.PORT, () => {
   console.log(`Server is running on http://localhost:${process.env.PORT}`);
 });
-
-//RevalidateLikes();
-//setInterval(RevalidateLikes, 1000 * 60 * 60); //Checks every hour

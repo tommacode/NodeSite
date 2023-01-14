@@ -8,6 +8,16 @@
   --text-color: #05b2dc;
 }
 
+::-webkit-scrollbar {
+  width: 7px;
+  background-color: var(--color-dark);
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: var(--text-color);
+  border-radius: 10px;
+}
+
 ::selection {
   background: var(--text-color);
   color: var(--color-dark);

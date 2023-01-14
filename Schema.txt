@@ -23,14 +23,16 @@ create table Projects(
     Status VARCHAR(8)
 );
 
-create table CommentsTest(
+create table Comments(
     ID INT AUTO_INCREMENT PRIMARY KEY,
     Time TIMESTAMP,
     Project INT,
     UserID INT,
     Content TEXT,
-    Likes INT,
-    unique_id VARCHAR(255) NOT NULL
+    unique_id VARCHAR(255) NOT NULL,
+    Deleted INT DEFAULT 0,
+    DeletedAt TIMESTAMP,
+    DeletedBy INT
 );
 
 create table Users(
@@ -87,4 +89,8 @@ DELETE FROM Users WHERE Username = '';
 
 All changes to the tables
 
-ALTER TABLE Logs ADD COLUMN ProcessTime INT DEFAULT 0;
+ALTER TABLE Users ADD COlUMN ProfilePictureLastUpdated TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+
+ALTER TABLE Comments ADD COLUMN Deleted INT DEFAULT 0;
+ALTER TABLE Comments ADD COLUMN DeletedAt TIMESTAMP;
+ALTER TABLE Comments ADD COLUMN DeletedBy INT;

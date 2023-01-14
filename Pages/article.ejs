@@ -1,11 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <script
-      src="https://challenges.cloudflare.com/turnstile/v0/api.js"
-      async
-      defer
-    ></script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -117,7 +112,8 @@
 
         <!--Use ejs to render the comments the same as the javascript would-->
         <div id="commentList">
-          <% for (var i = 0; i < Comments.length; i++) { %>
+          <% for (var i = 0; i < Comments.length; i++) { %> <% if
+          (Comments[i].Deleted == false) { %>
           <img
             class="CommentProfilePicture"
             src="/api/avatar/<%= Comments[i].ProfilePicture %>"
@@ -175,8 +171,75 @@
             <% } %>
           </div>
           <hr />
-          <% } %>
+          <% } %> <% } %>
         </div>
+      </div>
+      <% if (SudoUser == true) { %>
+      <div class="borders">
+        <h3>Deleted Comments</h3>
+        <div id="commentList">
+          <% for (var i = 0; i < Comments.length; i++) { %> <% if
+          (Comments[i].Deleted == true) { %>
+          <img
+            class="CommentProfilePicture"
+            src="/api/avatar/<%= Comments[i].ProfilePicture %>"
+            alt="Profile Picture"
+            style="float: left"
+          />
+          <p style="float: right"><%= Comments[i].Time %></p>
+          <h4 style="float: left"><%- Comments[i].Username %></h4>
+          <br />
+          <p style="float: right"></p>
+          <p style="word-wrap: break-word; max-width: 80%">
+            <%= Comments[i].Content %>
+          </p>
+          <button
+            class="clearBtn"
+            onclick="RestoreComment('<%= Comments[i].Unique_id %>')"
+          >
+            Restore
+          </button>
+          <div id="Like">
+            <% if (Comments[i].Liked == true) { %>
+            <a
+              class="CommentLikeBtn"
+              onclick="LikeComment('<%= Comments[i].Unique_id %>')"
+              style="
+                font-size: 2rem;
+                color: var(--text-color);
+                text-decoration: none;
+                cursor: pointer;
+              "
+              id="<%- Comments[i].Unique_id %>"
+              >♥</a
+            >
+            <p id="<%- Comments[i].Unique_id %>Count">
+              <%= Comments[i].Likes %>
+            </p>
+            <% } else { %>
+            <a
+              class="CommentLikeBtn"
+              onclick="LikeComment('<%= Comments[i].Unique_id %>')"
+              style="
+                font-size: 2rem;
+                color: var(--text-color);
+                text-decoration: none;
+                cursor: pointer;
+              "
+              id="<%- Comments[i].Unique_id %>"
+              >♡</a
+            >
+            <p id="<%- Comments[i].Unique_id %>Count">
+              <%= Comments[i].Likes %>
+            </p>
+            <% } %>
+          </div>
+          <p style="float: right">Deleted At: <%= Comments[i].DeletedAt %></p>
+          <br />
+          <hr />
+          <% } %> <% } %>
+        </div>
+        <% } %>
       </div>
       <div id="footer">
         <h3>Footer</h3>
@@ -202,6 +265,19 @@
         </ul>
       </div>
     </div>
+    <% if (SudoUser == true) { %>
+    <script>
+      function RestoreComment(CommentID) {
+        fetch("/api/comments/restore/" + CommentID).then((response) => {
+          if (response.status == 204) {
+            location.reload();
+          } else {
+            alert("Error");
+          }
+        });
+      }
+    </script>
+    <% } %>
     <script>
       function CommentCharCount() {
         var comment = document.getElementById("comment").value;
