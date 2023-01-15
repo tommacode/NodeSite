@@ -13,3 +13,7 @@ CfTurnStyleSecret=
 
 AvatarPath=
 ArticlePhotosPath=
+
+SettingsPath=
+
+Domain=

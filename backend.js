@@ -44,7 +44,9 @@ app.use(
 
 //Image conversion
 const Jimp = require("jimp");
-const { Console } = require("console");
+
+//XML
+const builder = require("xmlbuilder");
 
 //Headers
 app.set("x-powered-by", false);
@@ -89,7 +91,10 @@ async function Logs(req, StatusCode, StartTime) {
   }
   //Get User Agent
   let useragent = req.headers["user-agent"];
-  if (useragent.length > 255 && useragent != undefined) {
+  if (useragent == undefined) {
+    useragent = "No User Agent";
+  }
+  if (useragent.length > 255) {
     useragent = useragent.slice(0, 255);
   }
   //Get Method
@@ -116,8 +121,7 @@ async function Logs(req, StatusCode, StartTime) {
   }
 
   console.log(
-    `${datetime} | ${ip} | ${forwardedfor} | ${useragent} | ${method} | ${path} | ${StatusCode} | ${Username} | ${
-      FinishTime - StartTime
+    `${datetime} | ${ip} | ${forwardedfor} | ${useragent} | ${method} | ${path} | ${StatusCode} | ${Username} | ${FinishTime - StartTime
     }ms`
   );
   const sql = `INSERT INTO Logs (Time, ip, forwardedfor, useragent, method, path, statuscode, User, ProcessTime) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`;
@@ -288,8 +292,8 @@ app.get("/projects", async (req, res) => {
   UserID = await GetUserID(req.cookies.Auth, req);
   if (UserID == null) {
     res.render(__dirname + "/Pages/NavPage.ejs", {
-      Articles: Articles,
       User: false,
+      Articles: Articles,
     });
     Logs(req, 200, StartTime);
     return;
@@ -301,8 +305,8 @@ app.get("/projects", async (req, res) => {
       Articles[i].Viewed = false;
     }
     res.render(__dirname + "/Pages/NavPage.ejs", {
-      Articles: Articles,
       User: true,
+      Articles: Articles,
     });
     Logs(req, 200, StartTime);
     return;
@@ -313,8 +317,8 @@ app.get("/projects", async (req, res) => {
     Articles[i].Viewed = view[0]["count(*)"] == 1;
   }
   res.render(__dirname + "/Pages/NavPage.ejs", {
-    Articles: Articles,
     User: true,
+    Articles: Articles,
   });
   Logs(req, 200, StartTime);
 });
@@ -462,6 +466,7 @@ app.get("/projects/*", async (req, res) => {
   }
   const [result] = await pool.query(sql, [project]);
   if (result.length == 0) {
+    //Send 404 status code and 404.html
     res.sendFile(__dirname + "/Pages/404.html");
     Logs(req, 404, StartTime);
     return;
@@ -659,7 +664,7 @@ app.get("/api/projects/:project/like", LikeLimit, async (req, res) => {
 });
 
 //Comments
-app.post("/api/projects/:project/comment", async (req, res) => {
+app.post("/api/projects/:project/comment", CommentLimit, async (req, res) => {
   const StartTime = new Date().getTime();
   const UserID = await GetUserID(req.cookies["Auth"], req);
   if (UserID == null) {
@@ -742,7 +747,7 @@ app.post("/api/projects/:project/comment", async (req, res) => {
   const id =
     Math.random().toString(36).substring(2, 15) +
     Math.random().toString(36).substring(2, 15);
-  const sql = `INSERT INTO Comments (Project,UserID,Content,Time,Likes,Unique_id) VALUES (?, ?, ?, ?, ?, ?)`;
+  sql = `INSERT INTO Comments (Project,UserID,Content,Time,Likes,Unique_id) VALUES (?, ?, ?, ?, ?, ?)`;
   const values = [project[0].ID, UserID, comment, datetime, 0, id];
   pool.query(sql, values);
   res.send({ status: true, message: "Comment added" });
@@ -944,7 +949,6 @@ app.post("/api/projects/:id/edit", async (req, res) => {
   const password = req.cookies.Auth;
 
   if (await Authorised(password, pool)) {
-    ShowResults();
     let id = req.params.id;
     let title = req.body.title;
     let appetizer = req.body.appetizer;
@@ -962,6 +966,7 @@ app.post("/api/projects/:id/edit", async (req, res) => {
     pool.query(sql, [title, appetizer, content, tags, id]);
     res.send("Successfully updated project");
     Logs(req, 200, StartTime);
+    ShowResults();
   } else {
     res.sendStatus(403);
     Logs(req, 403, StartTime);
@@ -1587,6 +1592,27 @@ app.get("/api/quickActions/CommentCreation", async (req, res) => {
     res.send({ status: false, error: true, message: "Not an admin" });
     Logs(req, 401, StartTime);
   }
+});
+
+app.get("/sitemap.xml", async (req, res) => {
+  const StartTime = new Date().getTime();
+  //Use xml builder to create the sitemap
+  const sitemap = builder.create("urlset", { version: "1.0" });
+  sitemap.att("xmlns", "http://www.sitemaps.org/schemas/sitemap/0.9");
+
+  //Add the home page
+  sitemap.ele("url").ele("loc", `https://www.${process.env.Domain}/`);
+  sitemap.ele("url").ele("loc", `https://www.${process.env.Domain}/login`);
+  sitemap.ele("url").ele("loc", `https://www.${process.env.Domain}/SignUp`);
+  sitemap.ele("url").ele("loc", `https://www.${process.env.Domain}/projects`);
+  let sql = "SELECT Title FROM Projects WHERE Status = 1";
+  const [results] = await pool.query(sql)
+  for (let i = 0; i < results.length; i++) {
+    sitemap.ele("url").ele("loc", `https://www.${process.env.Domain}/projects/${results[i].Title.replace(/ /g, "-")}`);
+  }
+  res.header("Content-Type", "application/xml");
+  res.send(sitemap.end({ pretty: true }));
+  Logs(req, 200, StartTime);
 });
 
 app.listen(process.env.PORT, () => {
