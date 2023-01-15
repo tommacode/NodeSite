@@ -1,6 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
+    <script
+      src="https://cdn.lr-in-prod.com/LogRocket.min.js"
+      crossorigin="anonymous"
+    ></script>
+    <script>
+      window.LogRocket && window.LogRocket.init("rwfvin/tomblakeme");
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -343,13 +350,11 @@
         http.send(`comment=${comment}`);
         http.onreadystatechange = function () {
           if (this.readyState == 4 && this.status == 200) {
-            let response = JSON.parse(this.responseText);
-            document.getElementById(
-              "response"
-            ).innerHTML = `<b>${response.message}</b>`;
+            response = JSON.parse(this.responseText);
+            document.getElementById("response").innerHTML = response.message;
             setTimeout(function () {
               location.reload();
-            }, 750);
+            }, 2500);
           }
         };
       }

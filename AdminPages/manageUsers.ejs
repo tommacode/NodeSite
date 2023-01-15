@@ -1,6 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
+    <script
+      src="https://cdn.lr-in-prod.com/LogRocket.min.js"
+      crossorigin="anonymous"
+    ></script>
+    <script>
+      window.LogRocket && window.LogRocket.init("rwfvin/tomblakeme");
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -44,64 +51,76 @@
       <header>
         <h1>Manage Users</h1>
       </header>
+      <!--Search-->
+      <div class="borders">
+        <h3>Search</h3>
+        <input
+          oninput="Search()"
+          type="text"
+          id="searchBar"
+          placeholder="Search..."
+        />
+      </div>
 
-      <div class="borders" id="Users">
+      <div class="borders">
         <h3>Users (<%= Users.length %>)</h3>
       </div>
-      <% for (let i = 0; i < Users.length; i++) { %>
-      <div class="borders">
-        <img
-          class="CommentProfilePicture"
-          src="/api/avatar/<%= Users[i].ProfilePicture %>"
-          alt="Profile Picture"
-          style="float: left; margin-bottom: 2vh; margin-top: 1vh"
-        />
-        <% if (Users[i].Locked == 'True') { %>
-        <h3 id="<%- Users[i].id %>"><%= Users[i].Username %> (Locked)</h3>
-        <% } else { %>
-        <h3 id="<%- Users[i].id %>"><%- Users[i].Username %></h3>
-        <% } %>
-        <p>
-          <strong>Account Created: </strong><%- Users[i].Time %>
+      <div id="Users">
+        <% for (let i = 0; i < Users.length; i++) { %>
+        <div class="borders">
+          <img
+            class="CommentProfilePicture"
+            src="/api/avatar/<%= Users[i].ProfilePicture %>"
+            alt="Profile Picture"
+            style="float: left; margin-bottom: 2vh; margin-top: 1vh"
+          />
+          <% if (Users[i].Locked == 'True') { %>
+          <h3 id="<%- Users[i].id %>"><%= Users[i].Username %> (Locked)</h3>
+          <% } else { %>
+          <h3 id="<%- Users[i].id %>"><%- Users[i].Username %></h3>
+          <% } %>
+          <p>
+            <strong>Account Created: </strong><%- Users[i].Time %>
+            <br />
+            <strong>Last Used: </strong><%- Users[i].LastUsed %>
+          </p>
+          <p>
+            <strong>Sessions:</strong> <%- Users[i].Sessions %> |
+            <strong>Comments:</strong> <%- Users[i].Comments %> |
+            <strong>Liked Projects:</strong> <%- Users[i].Likes %>
+          </p>
+          <button
+            style="float: left"
+            onclick="DeletePfp('<%- Users[i].id %>')"
+            class="clearBtn"
+          >
+            Remove PFP
+          </button>
+          <button
+            id="<%- Users[i].id %>ModifyProfilePicture"
+            onclick="ModifyPFP('<%- Users[i].id %>')"
+            class="clearBtn"
+          >
+            Change Pfp: <%= Users[i].ModifyProfilePicture %>
+          </button>
+          <button
+            id="<%- Users[i].id %>WriteComments"
+            onclick="WriteComments('<%- Users[i].id %>')"
+            class="clearBtn"
+          >
+            Write Comments: <%= Users[i].WriteComments %>
+          </button>
+          <button
+            id="<%- Users[i].id %>LockAccount"
+            onclick="LockAccount('<%- Users[i].id %>')"
+            class="clearBtn"
+          >
+            Locked: <%= Users[i].Locked %>
+          </button>
           <br />
-          <strong>Last Used: </strong><%- Users[i].LastUsed %>
-        </p>
-        <p>
-          <strong>Sessions:</strong> <%- Users[i].Sessions %> |
-          <strong>Comments:</strong> <%- Users[i].Comments %> |
-          <strong>Liked Projects:</strong> <%- Users[i].Likes %>
-        </p>
-        <button
-          style="float: left"
-          onclick="DeletePfp('<%- Users[i].id %>')"
-          class="clearBtn"
-        >
-          Remove PFP
-        </button>
-        <button
-          id="<%- Users[i].id %>ModifyProfilePicture"
-          onclick="ModifyPFP('<%- Users[i].id %>')"
-          class="clearBtn"
-        >
-          Change Pfp: <%= Users[i].ModifyProfilePicture %>
-        </button>
-        <button
-          id="<%- Users[i].id %>WriteComments"
-          onclick="WriteComments('<%- Users[i].id %>')"
-          class="clearBtn"
-        >
-          Write Comments: <%= Users[i].WriteComments %>
-        </button>
-        <button
-          id="<%- Users[i].id %>LockAccount"
-          onclick="LockAccount('<%- Users[i].id %>')"
-          class="clearBtn"
-        >
-          Locked: <%= Users[i].Locked %>
-        </button>
-        <br />
+        </div>
+        <% } %>
       </div>
-      <% } %>
       <!--Project Thumbnails-->
       <div id="footer">
         <h3>Footer</h3>
@@ -183,6 +202,22 @@
               }
             }
           });
+      }
+      function Search() {
+        var input, filter, ul, li, a, i, txtValue;
+        input = document.getElementById("searchBar");
+        filter = input.value.toLowerCase();
+        ul = document.getElementById("Users");
+        li = ul.getElementsByTagName("div");
+        for (i = 0; i < li.length; i++) {
+          a = li[i].getElementsByTagName("h3")[0];
+          txtValue = a.textContent || a.innerText;
+          if (txtValue.toLowerCase().indexOf(filter) > -1) {
+            li[i].style.display = "";
+          } else {
+            li[i].style.display = "none";
+          }
+        }
       }
     </script>
   </body>

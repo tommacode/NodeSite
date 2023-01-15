@@ -6,7 +6,7 @@ fetch("/api/user")
     }
   })
   .then((data) => {
-    if (data != undefined) {
+    if (data != undefined && data.Locked == 0) {
       if (window.outerWidth < 700) {
         document.getElementById("loginInfo").innerHTML = data.Username;
       } else {
@@ -25,6 +25,11 @@ fetch("/api/user")
             "Posting comments has been disabled on your account";
         }
       }
+    } else if (data != undefined && data.Locked == 1) {
+      alert(
+        "Your account has been locked by an admin. You will be logged out. Redirecting to the login page"
+      );
+      window.location.href = "/login";
     } else {
       if (window.location.href.includes("/projects/")) {
         document.querySelector(".borders h3").style.display = "none";

@@ -96,10 +96,3 @@ DELETE FROM Users WHERE Username = '';
 
 All changes to the tables
 
-create table Views(
-    ID INT AUTO_INCREMENT PRIMARY KEY,
-    Time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    Project INT,
-    UserID INT
-);
-

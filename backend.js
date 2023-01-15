@@ -121,7 +121,8 @@ async function Logs(req, StatusCode, StartTime) {
   }
 
   console.log(
-    `${datetime} | ${ip} | ${forwardedfor} | ${useragent} | ${method} | ${path} | ${StatusCode} | ${Username} | ${FinishTime - StartTime
+    `${datetime} | ${ip} | ${forwardedfor} | ${useragent} | ${method} | ${path} | ${StatusCode} | ${Username} | ${
+      FinishTime - StartTime
     }ms`
   );
   const sql = `INSERT INTO Logs (Time, ip, forwardedfor, useragent, method, path, statuscode, User, ProcessTime) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`;
@@ -167,6 +168,12 @@ async function GetUserID(cookie, req) {
     "SELECT UserID FROM Sessions WHERE cookie = ?",
     [cookie]
   );
+  const [Locked] = await pool.query("SELECT Locked FROM Users WHERE ID = ?", [
+    result[0].UserID,
+  ]);
+  if (Locked[0].Locked == 1) {
+    return null;
+  }
   //Update lastused time, UserAgentLastSeen, IPLastSeen
   const date = new Date();
   //Make this datetime value
@@ -523,6 +530,8 @@ app.get("/projects/*", async (req, res) => {
   if (UserID == null) {
     UserID = 0;
   }
+
+  //Optimize this
   sql = `SELECT * FROM projectLikes WHERE Project = ? AND UserID = ?`;
   let [liked] = await pool.query(sql, [ProjectID, UserID]);
   let Liked;
@@ -664,7 +673,7 @@ app.get("/api/projects/:project/like", LikeLimit, async (req, res) => {
 });
 
 //Comments
-app.post("/api/projects/:project/comment", CommentLimit, async (req, res) => {
+app.post("/api/projects/:project/comment", async (req, res) => {
   const StartTime = new Date().getTime();
   const UserID = await GetUserID(req.cookies["Auth"], req);
   if (UserID == null) {
@@ -732,6 +741,20 @@ app.post("/api/projects/:project/comment", CommentLimit, async (req, res) => {
       message: "Comment is empty or on non existent article",
     });
     Logs(req, 400, StartTime);
+    return;
+  }
+  //Change StartTime to be 10 minutes ago
+  let Past = new Date().getTime() - 30000;
+  //Change past to datetime
+  Past = new Date(Past).toISOString().slice(0, 19).replace("T", " ");
+  sql = `SELECT count(*) FROM Logs WHERE User = ? AND Path Like ? AND Time > ?`;
+  const [count] = await pool.query(sql, [UserID, "%/comment", Past]);
+  if (count[0]["count(*)"] > 2) {
+    res.send({
+      status: false,
+      message: "You have commented too many times. Try again later.",
+    });
+    console.log("Rate limit reached by (" + UserID + ")");
     return;
   }
   let project = req.params.project;
@@ -978,6 +1001,28 @@ app.get("/management", async (req, res) => {
   const StartTime = new Date().getTime();
   const Cookies = req.cookies;
   if (await Authorised(Cookies["Auth"], pool)) {
+    //Get the total number of requests
+    let sql = `SELECT count(*) FROM Logs`;
+    let [RequestsCount] = await pool.query(sql);
+    RequestsCount = RequestsCount[0]["count(*)"];
+    //Get the average process time of the requests
+    sql = `SELECT ProcessTime FROM Logs ORDER BY Time DESC LIMIT 100`;
+    let [ProcessTime] = await pool.query(sql);
+    let TotalProcessTime = 0;
+    for (let i = 0; i < ProcessTime.length; i++) {
+      TotalProcessTime += ProcessTime[i]["ProcessTime"];
+    }
+    let AverageProcessTime = TotalProcessTime / ProcessTime.length;
+    AverageProcessTime = Math.round(AverageProcessTime * 100) / 100;
+    //Average number of requests per second
+    Past = StartTime - 10000;
+    Past = new Date(Past).toISOString().slice(0, 19).replace("T", " ");
+    sql = `SELECT count(*) FROM Logs WHERE Time > ?`;
+    let [PastCount] = await pool.query(sql, [Past]);
+    PastCount = PastCount[0]["count(*)"];
+    let AverageRequestsPerSecond = PastCount / 10;
+    AverageRequestsPerSecond = Math.round(AverageRequestsPerSecond * 100) / 100;
+
     //Read settings.json and parse json
     let settings = fs.readFileSync(process.env.SettingsPath);
     settings = JSON.parse(settings);
@@ -985,6 +1030,9 @@ app.get("/management", async (req, res) => {
       LockAccounts: "(" + settings.New_Users.LockonCreate + ")",
       NewComments: "(" + settings.Existing_Users.CreateComments + ")",
       ChangePfp: "(" + settings.Existing_Users.ChangePfp + ")",
+      Requests: RequestsCount,
+      AverageProcessTime: AverageProcessTime,
+      AverageRequestsPerSecond: AverageRequestsPerSecond,
     });
     Logs(req, 200, StartTime);
   } else {
@@ -1365,7 +1413,7 @@ app.get("/api/user", async (req, res) => {
     }
     if (result[0].Locked == 1) {
       res.clearCookie("Auth");
-      res.send(204);
+      res.send(result[0]);
       return;
     }
     res.send(result[0]);
@@ -1533,14 +1581,14 @@ app.post("/api/remove/pfp", async (req, res) => {
 app.get("/api/avatar/:pfp", async (req, res) => {
   const StartTime = new Date().getTime();
   const pfp = req.params.pfp;
+  //add expires header for 5 minutes
+  res.set("Expires", new Date(Date.now() + 5 * 60 * 1000).toUTCString());
   //check if the image exists
   if (!fs.existsSync(process.env.AvatarPath + pfp + ".png")) {
     res.sendFile(process.env.AvatarPath + "0.png");
     Logs(req, 404, StartTime);
     return;
   }
-  //Add expires header for 5 minutes
-  res.set("Expires", new Date(Date.now() + 5 * 60 * 1000).toUTCString());
   res.sendFile(process.env.AvatarPath + pfp + ".png");
   Logs(req, 200, StartTime);
 });
@@ -1606,9 +1654,17 @@ app.get("/sitemap.xml", async (req, res) => {
   sitemap.ele("url").ele("loc", `https://www.${process.env.Domain}/SignUp`);
   sitemap.ele("url").ele("loc", `https://www.${process.env.Domain}/projects`);
   let sql = "SELECT Title FROM Projects WHERE Status = 1";
-  const [results] = await pool.query(sql)
+  const [results] = await pool.query(sql);
   for (let i = 0; i < results.length; i++) {
-    sitemap.ele("url").ele("loc", `https://www.${process.env.Domain}/projects/${results[i].Title.replace(/ /g, "-")}`);
+    sitemap
+      .ele("url")
+      .ele(
+        "loc",
+        `https://www.${process.env.Domain}/projects/${results[i].Title.replace(
+          / /g,
+          "-"
+        )}`
+      );
   }
   res.header("Content-Type", "application/xml");
   res.send(sitemap.end({ pretty: true }));
