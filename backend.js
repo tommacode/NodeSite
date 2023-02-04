@@ -121,8 +121,7 @@ async function Logs(req, StatusCode, StartTime) {
   }
 
   console.log(
-    `${datetime} | ${ip} | ${forwardedfor} | ${useragent} | ${method} | ${path} | ${StatusCode} | ${Username} | ${
-      FinishTime - StartTime
+    `${datetime} | ${ip} | ${forwardedfor} | ${useragent} | ${method} | ${path} | ${StatusCode} | ${Username} | ${FinishTime - StartTime
     }ms`
   );
   const sql = `INSERT INTO Logs (Time, ip, forwardedfor, useragent, method, path, statuscode, User, ProcessTime) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`;
@@ -473,7 +472,7 @@ app.get("/projects/*", async (req, res) => {
   }
   const [result] = await pool.query(sql, [project]);
   if (result.length == 0) {
-    //Send 404 status code and 404.html
+    //Send 404 status code and 404 page
     res.sendFile(__dirname + "/Pages/404.html");
     Logs(req, 404, StartTime);
     return;
@@ -1308,7 +1307,7 @@ app.post("/api/user/create", async (req, res) => {
     Logs(req, 400, StartTime);
     return;
   }
-  //Check if username is taken
+  // Check if username is taken
   let sql = `SELECT count(*) FROM Users WHERE Username = ? OR Email = ?`;
   let [result] = await pool.query(sql, [username, email]);
   if (result[0]["count(*)"] > 0) {
@@ -1333,8 +1332,41 @@ app.post("/api/user/create", async (req, res) => {
         .update(password)
         .digest("hex");
       sql = `INSERT INTO Users (Username, Password, Email, Locked) VALUES (?, ?, ?, ?)`;
-      pool.query(sql, [username, passwordHash, email, Locked]);
-      res.send("Account created");
+      await pool.query(sql, [username, passwordHash, email, Locked]);
+      //Get the id of the user
+      sql = `SELECT id FROM Users WHERE Username = ?`;
+      const [UserID] = await pool.query(sql, [username]);
+      //Create verification id
+      const VerificationID = crypto.randomBytes(16).toString("hex");
+      sql = `INSERT INTO VerifyEmail (UserID, Code) VALUES (?, ?)`;
+      pool.query(sql, [UserID[0].id, VerificationID]);
+      //Send email
+      if (settings.New_Users.SendEmail == true) {
+        const msg = {
+          from: process.env.SENDER_EMAIL,
+          to: email,
+          subject: "Verify Your Email",
+          htmlT: `<!DOCTYPE html>
+          <html lang="en">
+            <head>
+              <meta charset="UTF-8" />
+              <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+              <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+            </head>
+            <body>
+              <center>
+                <h1>Verify Your Email</h1>
+                <br />
+                <p>Click the link to verify your email address</p>
+                <br />
+                <a href="${process.env.Protocol}://${process.env.Domain}/Verify/${VerificationID}">Verify Email</a>
+              </center>
+            </body>
+          </html>`,
+        };
+        sgMail.send(msg);
+      }
+      res.send("Account created. Please check your email to verify your account before logging in.");
       Logs(req, 200, StartTime);
     } else {
       res.send("Suspected bot");
@@ -1359,6 +1391,11 @@ app.post("/api/user/login", async (req, res) => {
       if (result.length == 1) {
         if (result[0].Locked == 1) {
           res.send("Account is locked");
+          Logs(req, 403, StartTime);
+          return;
+        }
+        if (result[0].EmailVerified == 0) {
+          res.send("Verify your email before logging in");
           Logs(req, 403, StartTime);
           return;
         }
@@ -1422,6 +1459,31 @@ app.get("/api/user", async (req, res) => {
     res.sendStatus(204);
     Logs(req, 204, StartTime);
   }
+});
+
+app.get('/Verify/*', async (req, res) => {
+  const StartTime = new Date().getTime();
+  res.sendFile(__dirname + '/Pages/Verify.html');
+  Logs(req, 200, StartTime);
+});
+
+app.post("/api/user/verify", async (req, res) => {
+  const StartTime = new Date().getTime();
+  const code = req.body.VerificationID;
+  let sql = `SELECT UserID FROM VerifyEmail WHERE Code = ?`;
+  let [UserID] = await pool.query(sql, [code]);
+  if (UserID.length == 0) {
+    res.send("Invalid code");
+    Logs(req, 403, StartTime);
+    return;
+  }
+  UserID = UserID[0].UserID;
+  sql = `UPDATE Users SET EmailVerified = 1 WHERE ID = ?`;
+  pool.query(sql, [UserID]);
+  sql = `DELETE FROM VerifyEmail WHERE Code = ?`;
+  pool.query(sql, [code]);
+  res.sendStatus(200);
+  Logs(req, 200, StartTime);
 });
 
 app.post("/api/upload/articlePhotos", async (req, res) => {
@@ -1649,10 +1711,10 @@ app.get("/sitemap.xml", async (req, res) => {
   sitemap.att("xmlns", "http://www.sitemaps.org/schemas/sitemap/0.9");
 
   //Add the home page
-  sitemap.ele("url").ele("loc", `https://www.${process.env.Domain}/`);
-  sitemap.ele("url").ele("loc", `https://www.${process.env.Domain}/login`);
-  sitemap.ele("url").ele("loc", `https://www.${process.env.Domain}/SignUp`);
-  sitemap.ele("url").ele("loc", `https://www.${process.env.Domain}/projects`);
+  sitemap.ele("url").ele("loc", `${process.env.Protocol}://${process.env.Domain}/`);
+  sitemap.ele("url").ele("loc", `${process.env.Protocol}://${process.env.Domain}/login`);
+  sitemap.ele("url").ele("loc", `${process.env.Protocol}://${process.env.Domain}/SignUp`);
+  sitemap.ele("url").ele("loc", `${process.env.Protocol}://${process.env.Domain}/projects`);
   let sql = "SELECT Title FROM Projects WHERE Status = 1";
   const [results] = await pool.query(sql);
   for (let i = 0; i < results.length; i++) {
@@ -1660,7 +1722,7 @@ app.get("/sitemap.xml", async (req, res) => {
       .ele("url")
       .ele(
         "loc",
-        `https://www.${process.env.Domain}/projects/${results[i].Title.replace(
+        `${process.env.Protocol}://${process.env.Domain}/projects/${results[i].Title.replace(
           / /g,
           "-"
         )}`

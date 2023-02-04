@@ -65,10 +65,11 @@
         }).then((res) => {
           if (res.status == 200) {
             res.text().then((text) => {
-              alert(text);
+              console.log(text);
               if (text == "Logged in") {
                 window.location.href = "/";
               } else {
+                alert(text);
                 location.reload();
               }
             });

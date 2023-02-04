@@ -44,8 +44,10 @@ create table Users(
     Sudo INT,
     ProfilePicture VARCHAR(255)
     ModifyProfilePicture INT,
+    ProfilePictureLastUpdated TIMESTAMP,
     WriteComments INT,
     Locked INT,
+    EmailVerified INT DEFAULT 0
 );
 
 create table Sessions(
@@ -77,6 +79,11 @@ create table Views(
     UserID INT
 );
 
+create table VerifyEmail(
+    ID INT AUTO_INCREMENT PRIMARY KEY,
+    UserID INT,
+    Code VARCHAR(255)
+);
 
 Essential database actions that can't be done in the ui
 
@@ -96,3 +103,4 @@ DELETE FROM Users WHERE Username = '';
 
 All changes to the tables
 
+ALTER TABLE Users ADD COLUMN EmailVerified INT DEFAULT 0;

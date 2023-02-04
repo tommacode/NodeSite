@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <script
+      src="https://cdn.lr-in-prod.com/LogRocket.min.js"
+      crossorigin="anonymous"
+    ></script>
+    <script>
+      window.LogRocket && window.LogRocket.init("rwfvin/tomblakeme");
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap"
+      rel="stylesheet"
+    />
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Verify Email Address</title>
+    <link rel="stylesheet" href="/css.css" />
+  </head>
+  <body onload="Verify()">
+    <div class="borders" style="text-align: center">
+      <h1>Verifying Email Address</h1>
+      <br />
+      <div id="LoadingScreenParent" class="hidden">
+        <div style="margin-top: 5vh" id="dots" class="center"></div>
+        <br />
+        <p>Verifiying your email address</p>
+      </div>
+      <p id="Message" class="hidden"></p>
+    </div>
+    <script>
+      function Verify() {
+        //Show the loading screen
+        document
+          .getElementById("LoadingScreenParent")
+          .classList.remove("hidden");
+
+        //Get the last part of the URL
+        var url = window.location.href;
+        var urlParts = url.split("/");
+        var VerificationID = urlParts[urlParts.length - 1];
+
+        //Send a request to the API to verify the email address
+        var xhr = new XMLHttpRequest();
+        xhr.open("POST", "/api/user/verify");
+        xhr.setRequestHeader("Content-Type", "application/json");
+        xhr.send(
+          JSON.stringify({
+            VerificationID: VerificationID,
+          })
+        );
+        //When the request is complete, check the status code
+        xhr.onreadystatechange = function () {
+          if (xhr.status == 200 && xhr.readyState == 4) {
+            //If the email address was verified, redirect to the login page
+            //Hide loading screen and show message
+            document
+              .getElementById("LoadingScreenParent")
+              .classList.add("hidden");
+            document.getElementById("Message").classList.remove("hidden");
+            document.getElementById("Message").innerHTML =
+              "Your email address has been verified. Redirecting...";
+            //Wait 1 second and redirect to the login page
+            setTimeout(function () {
+              window.location.href = "/login";
+            }, 1000);
+          } else if (xhr.status == 400 || xhr.readyState != 4) {
+            //If the email address was not verified, show an error message
+            document
+              .getElementById("LoadingScreenParent")
+              .classList.add("hidden");
+            document.getElementById("Message").classList.remove("hidden");
+            document.getElementById("Message").innerHTML =
+              "An error occurred while verifying your email address. Please try again later.";
+          }
+        };
+
+        // if (xhr.status == 200 && xhr.readyState == 4) {
+        //   //If the email address was verified, redirect to the login page
+        //   //Hide loading screen and show message
+        //   document
+        //     .getElementById("LoadingScreenParent")
+        //     .classList.add("hidden");
+        //   document.getElementById("Message").classList.remove("hidden");
+        //   document.getElementById("Message").innerHTML =
+        //     "Your email address has been verified. Redirecting...";
+        //   //Wait 1 second and redirect to the login page
+        //   setTimeout(function () {
+        //     window.location.href = "/login";
+        //   }, 1000);
+        // } else if (xhr.status == 400 && xhr.readyState == 4) {
+        //   //If the email address was not verified, show an error message
+        //   document
+        //     .getElementById("LoadingScreenParent")
+        //     .classList.add("hidden");
+        //   document.getElementById("Message").classList.remove("hidden");
+        //   document.getElementById("Message").innerHTML =
+        //     "An error occurred while verifying your email address. Please try again later.";
+        // }
+      }
+    </script>
+  </body>
+</html>
