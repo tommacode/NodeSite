@@ -121,7 +121,8 @@ async function Logs(req, StatusCode, StartTime) {
   }
 
   console.log(
-    `${datetime} | ${ip} | ${forwardedfor} | ${useragent} | ${method} | ${path} | ${StatusCode} | ${Username} | ${FinishTime - StartTime
+    `${datetime} | ${ip} | ${forwardedfor} | ${useragent} | ${method} | ${path} | ${StatusCode} | ${Username} | ${
+      FinishTime - StartTime
     }ms`
   );
   const sql = `INSERT INTO Logs (Time, ip, forwardedfor, useragent, method, path, statuscode, User, ProcessTime) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`;
@@ -325,6 +326,19 @@ app.get("/projects", async (req, res) => {
   res.render(__dirname + "/Pages/NavPage.ejs", {
     User: true,
     Articles: Articles,
+  });
+  Logs(req, 200, StartTime);
+});
+
+app.get("/Images", async (req, res) => {
+  const StartTime = new Date().getTime();
+  //TODO: Get a list of the images from the database that are added to the images page
+  const [PhotoList] = await pool.query(
+    "SELECT * FROM Photos WHERE Visibility = 1 ORDER BY ID DESC"
+  );
+  res.render(__dirname + "/Pages/Images.ejs", {
+    PhotoList: PhotoList,
+    None: false,
   });
   Logs(req, 200, StartTime);
 });
@@ -1140,6 +1154,37 @@ app.get("/management/manageUser/:id", async (req, res) => {
   }
 });
 
+app.get("/management/managePhotos", async (req, res) => {
+  const StartTime = new Date().getTime();
+  const Cookies = req.cookies;
+  if (await Authorised(Cookies["Auth"], pool)) {
+    let Images = fs.readdirSync(process.env.ArticlePhotosPath);
+    let allowedExtensions = [".jpg", ".png", ".jpeg"];
+    for (i = 0; i < Images.length; i++) {
+      let ext = path.extname(Images[i]);
+      if (!allowedExtensions.includes(ext)) {
+        Images.splice(i, 1);
+        i--;
+      }
+    }
+    const [result] = await pool.query(`SELECT * FROM Photos`);
+    let ImageData = result;
+    for (i = 0; i < ImageData.length; i++) {
+      if (Images.indexOf(ImageData[i].Path) != -1) {
+        Images.splice(Images.indexOf(ImageData[i].Path), 1);
+      }
+    }
+    res.render(__dirname + "/AdminPages/ManagePhotos.ejs", {
+      Images: Images,
+      ImageData: ImageData,
+    });
+    Logs(req, 200, StartTime);
+  } else {
+    res.redirect("/login");
+    Logs(req, 302, StartTime);
+  }
+});
+
 app.get("/api/management/ModifyProfilePicture/:id", async (req, res) => {
   const StartTime = new Date().getTime();
   const Cookies = req.cookies;
@@ -1366,7 +1411,9 @@ app.post("/api/user/create", async (req, res) => {
         };
         sgMail.send(msg);
       }
-      res.send("Account created. Please check your email to verify your account before logging in.");
+      res.send(
+        "Account created. Please check your email to verify your account before logging in."
+      );
       Logs(req, 200, StartTime);
     } else {
       res.send("Suspected bot");
@@ -1461,9 +1508,9 @@ app.get("/api/user", async (req, res) => {
   }
 });
 
-app.get('/Verify/*', async (req, res) => {
+app.get("/Verify/*", async (req, res) => {
   const StartTime = new Date().getTime();
-  res.sendFile(__dirname + '/Pages/Verify.html');
+  res.sendFile(__dirname + "/Pages/Verify.html");
   Logs(req, 200, StartTime);
 });
 
@@ -1502,8 +1549,15 @@ app.post("/api/upload/articlePhotos", async (req, res) => {
     //Use the name of the input field (i.e. "Image") to retrieve the uploaded file
     let Image = req.files.Image;
 
+    let Name = req.body.Name;
+    if (Name == null || Name == "" || Name == undefined) {
+      Name = Image.name;
+    } else {
+      let ImageFormat = Image.name.split(".").pop();
+      Name = Name.replace(/ /g, "") + "." + ImageFormat.toLowerCase();
+    }
     //Use the mv() method to place the file in the upload directory (i.e. "uploads")
-    Image.mv(process.env.ArticlePhotosPath + Image.name);
+    Image.mv(process.env.ArticlePhotosPath + Name);
 
     if (
       Image.mimetype != "image/png" &&
@@ -1521,6 +1575,47 @@ app.post("/api/upload/articlePhotos", async (req, res) => {
     //send response
     res.sendStatus(204);
     Logs(req, 204, StartTime);
+  }
+});
+
+app.post("/api/addImageData", async (req, res) => {
+  const StartTime = new Date().getTime();
+  if (Authorised(req.cookies["Auth"], pool) == false) {
+    res.send({ status: false, message: "Not authorised" });
+    Logs(req, 403, StartTime);
+    return;
+  }
+  let sql =
+    "INSERT INTO Photos (Path, Name, Location, Description, Visibility) VALUES (?, ?, ?, ?, 1)";
+  await pool.query(sql, [
+    req.body.FileName,
+    req.body.Name,
+    req.body.Location,
+    req.body.Description,
+  ]);
+  res.send("ok");
+});
+
+app.post("/api/changeImageVisibility", async (req, res) => {
+  const StartTime = new Date().getTime();
+  if (Authorised(req.cookies["Auth"], pool) == false) {
+    res.send({ status: false, message: "Not authorised" });
+    Logs(req, 403, StartTime);
+    return;
+  }
+  let sql =
+    "UPDATE Photos SET Visibility = IF(Visibility = 1, 0, 1) WHERE Path = ?";
+  await pool.query(sql, [req.body.FileName]);
+  let [result] = await pool.query(
+    "SELECT Visibility FROM Photos WHERE Path = ?",
+    [req.body.FileName]
+  );
+  if (result[0].Visibility == 1) {
+    res.send({ success: true, visibility: "Visible" });
+    Logs(req, 200, StartTime);
+  } else {
+    res.send({ success: true, visibility: "Hidden" });
+    Logs(req, 200, StartTime);
   }
 });
 
@@ -1711,10 +1806,18 @@ app.get("/sitemap.xml", async (req, res) => {
   sitemap.att("xmlns", "http://www.sitemaps.org/schemas/sitemap/0.9");
 
   //Add the home page
-  sitemap.ele("url").ele("loc", `${process.env.Protocol}://${process.env.Domain}/`);
-  sitemap.ele("url").ele("loc", `${process.env.Protocol}://${process.env.Domain}/login`);
-  sitemap.ele("url").ele("loc", `${process.env.Protocol}://${process.env.Domain}/SignUp`);
-  sitemap.ele("url").ele("loc", `${process.env.Protocol}://${process.env.Domain}/projects`);
+  sitemap
+    .ele("url")
+    .ele("loc", `${process.env.Protocol}://${process.env.Domain}/`);
+  sitemap
+    .ele("url")
+    .ele("loc", `${process.env.Protocol}://${process.env.Domain}/login`);
+  sitemap
+    .ele("url")
+    .ele("loc", `${process.env.Protocol}://${process.env.Domain}/SignUp`);
+  sitemap
+    .ele("url")
+    .ele("loc", `${process.env.Protocol}://${process.env.Domain}/projects`);
   let sql = "SELECT Title FROM Projects WHERE Status = 1";
   const [results] = await pool.query(sql);
   for (let i = 0; i < results.length; i++) {
@@ -1722,10 +1825,9 @@ app.get("/sitemap.xml", async (req, res) => {
       .ele("url")
       .ele(
         "loc",
-        `${process.env.Protocol}://${process.env.Domain}/projects/${results[i].Title.replace(
-          / /g,
-          "-"
-        )}`
+        `${process.env.Protocol}://${process.env.Domain}/projects/${results[
+          i
+        ].Title.replace(/ /g, "-")}`
       );
   }
   res.header("Content-Type", "application/xml");

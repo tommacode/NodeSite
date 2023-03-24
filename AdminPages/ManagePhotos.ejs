@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <script
+      src="https://cdn.lr-in-prod.com/LogRocket.min.js"
+      crossorigin="anonymous"
+    ></script>
+    <script>
+      window.LogRocket && window.LogRocket.init("rwfvin/tomblakeme");
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap"
+      rel="stylesheet"
+    />
+    <script src="/login.js"></script>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tom Blake</title>
+    <!--Meta Tags-->
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:domain" content="tomblake.me" />
+    <meta
+      name="twitter:title"
+      property="og:title"
+      itemprop="name"
+      content="The webite made by Tom, for Tom"
+    />
+    <meta
+      name="twitter:description"
+      property="og:description"
+      itemprop="description"
+      content="A one page site that says a lot about what I do and who I am"
+    />
+    <link rel="stylesheet" href="../css.css" />
+  </head>
+  <body>
+    <div id="content" style="display: block">
+      <nav>
+        <a href="/login" class="listLink" style="font-size: 1rem" id="loginInfo"
+          >Not logged in</a
+        >
+        <ul>
+          <li><a class="listLink" href="/">Home</a></li>
+          <li><a class="listLink" href="/projects">Articles</a></li>
+        </ul>
+      </nav>
+      <!--Big header to draw attention-->
+      <header>
+        <h1>Manage Photos</h1>
+      </header>
+      <!--Search-->
+      <div class="borders">
+        <h3>Search</h3>
+        <input
+          oninput="Search()"
+          type="text"
+          id="searchBar"
+          placeholder="Search..."
+        />
+      </div>
+
+      <div class="borders">
+        <h3>Images</h3>
+      </div>
+      <div id="Images">
+        <% for (let i = 0; i < ImageData.length; i++) { %>
+        <div class="borders" style="padding-bottom: 5%">
+          <div style="text-align: center">
+            <img src="/photos/<%- ImageData[i].Path %>" alt="" />
+          </div>
+          <p>File Name: <%- ImageData[i].Path %></p>
+          <p>Name: <%- ImageData[i].Name %></p>
+          <p>Location: <%- ImageData[i].Location %></p>
+          <p>Description: <%- ImageData[i].Description %></p>
+          <% if (ImageData[i].Visibility == 1) { %>
+          <p>Visibility: Public</p>
+          <div class="Controls">
+            <button
+              id="<%- ImageData[i].Path %>"
+              onclick="ChangeVisibility('<%- ImageData[i].Path %>')"
+              class="clearBtn"
+              style="float: left"
+            >
+              Hide Image
+            </button>
+          <% } else { %>
+          <p>Visibility: Private</p>
+          <div class="Controls">
+            <button
+              id="<%- ImageData[i].Path %>"
+              onclick="ChangeVisibility('<%- ImageData[i].Path %>')"
+              class="clearBtn"
+              style="float: left"
+            >
+              Show Image
+            </button>
+          <% } %>
+            <button
+              id=">WriteComments"
+              onclick="WriteComments()"
+              class="clearBtn"
+            >
+              Edit Image
+            </button>
+          </div>
+        </div>
+        <% } %> <% for (let i = 0; i < Images.length; i++) { %>
+        <div class="borders" style="padding-bottom: 5%">
+          <div style="text-align: center">
+            <img src="/photos/<%- Images[i] %>" alt="" />
+          </div>
+          <p id="FileName<%- i %>">File Name: <%- Images[i] %></p>
+          <p>This image has no more related data</p>
+          <div class="Controls">
+            <button onclick="ShowDataForm('<%- i %>')" class="clearBtn">
+              Make Image Public
+            </button>
+            <div id="<%- i %>" style="display: none">
+              <input
+                type="text"
+                id="Name<%- i %>"
+                placeholder="Name"
+                style="width: 100%"
+              />
+              <input
+                type="text"
+                id="Location<%- i %>"
+                placeholder="Location"
+                style="width: 100%"
+              />
+              <input
+                type="text"
+                id="Description<%- i %>"
+                placeholder="Description"
+                style="width: 100%"
+              />
+              <button onclick="AddImageData('<%- i %>')">Confirm</button>
+            </div>
+          </div>
+        </div>
+        <% } %>
+      </div>
+      <div class="borders">
+        <form
+          action="/api/upload/articlePhotos"
+          method="POST"
+          id="ImageUpload"
+          enctype="multipart/form-data"
+        >
+          <input type="file" name="Image" id="Image" />
+          <br />
+          <input type="text" name="Name" id="Name" placeholder="Name" />
+          <br />
+          <button>Upload</button>
+        </form>
+      </div>
+
+      <div id="Users"></div>
+      <!--Project Thumbnails-->
+      <div id="footer">
+        <h3>Footer</h3>
+        <!--Links-->
+        <ul class="linkBar">
+          <li>
+            <a
+              target="_blank"
+              href="https://github.com/tommacode"
+              class="listLink"
+              >My Github</a
+            >
+          </li>
+          <li>
+            <a
+              target="_blank"
+              href="https://tomhasawebsite.com"
+              class="listLink"
+              >Other Website</a
+            >
+          </li>
+          <li><a href="#" class="listLink">Back to the top!</a></li>
+        </ul>
+      </div>
+    </div>
+    <script>
+      function ShowDataForm(i) {
+        if (document.getElementById(i).style.display == "block")
+          document.getElementById(i).style.display = "none";
+        else document.getElementById(i).style.display = "block";
+      }
+      function AddImageData(i) {
+        var Name = document.getElementById("Name" + i).value;
+        var Location = document.getElementById(`Location` + i).value;
+        var Description = document.getElementById(`Description` + i).value;
+        var FileName = document.getElementById(`FileName` + i).innerHTML;
+        FileName = FileName.replace("File Name: ", "");
+        var data = {
+          Name: Name,
+          Location: Location,
+          Description: Description,
+          FileName: FileName,
+        };
+        var xhr = new XMLHttpRequest();
+        xhr.open("POST", "/api/addImageData", true);
+        xhr.setRequestHeader("Content-Type", "application/json");
+        xhr.send(JSON.stringify(data));
+        xhr.onload = function () {
+          if (xhr.status == 200) {
+            alert("Image Data Added");
+            window.location.reload();
+          } else {
+            alert("Error");
+          }
+        };
+      };
+      function ChangeVisibility(FileName) {
+        var data = {
+          FileName: FileName,
+        };
+        var xhr = new XMLHttpRequest();
+        xhr.open("POST", "/api/changeImageVisibility", true);
+        xhr.setRequestHeader("Content-Type", "application/json");
+        xhr.send(JSON.stringify(data));
+        xhr.onload = function () {
+          if (xhr.status == 200) {
+            var res = JSON.parse(xhr.responseText);
+            if (res.visibility == "Hidden") {
+              document.getElementById(FileName).innerHTML = "Show Image";
+              document.getElementById(FileName).parentElement.previousElementSibling.innerHTML = "Visibility: Private";
+            }
+            else {
+              document.getElementById(FileName).innerHTML = "Hide Image"
+              document.getElementById(FileName).parentElement.previousElementSibling.innerHTML = "Visibility: Public";
+            } 
+          } else {
+            alert(res.text);
+          }
+        };
+      };
+    </script>
+  </body>
+</html>

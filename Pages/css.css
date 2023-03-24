@@ -88,10 +88,7 @@ header h1 {
 }
 
 header h1 span {
-  background-color: var(--text-color);
-  color: var(--color-dark);
-  padding: 0.25vh 0.5vw;
-  border-radius: 15px;
+  text-decoration: underline;
 }
 
 header h3 {
@@ -375,6 +372,55 @@ hr {
   margin-left: 1vw;
 }
 
+.PictureFrame {
+  border: 1px solid var(--text-color);
+  border-radius: 10px;
+  padding: 5px;
+  margin: 5px;
+  min-height: 50%;
+  min-width: 50%;
+  transition: all 0.5s ease-out;
+
+}
+
+.PictureFrameWrapper {
+  margin: 8rem 0;
+}
+
+.PictureFrame:hover {
+  cursor: pointer;
+  /*transform: scale(1.05);*/
+}
+
+/* Make the decendent img tag become the background of the parent div */
+.PictureFrame img {
+  /* Stop the image from stretching */
+  object-fit: cover;
+  border-radius: 10px;
+}
+
+/* Put the other elements on top of the image */
+.PictureFrameText {
+  display: none;
+  animation: slideOutDown 0.5s ease-out forwards;
+}
+
+@keyframes slideOutDown {
+  0% {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.PictureFrameWrapper:hover .PictureFrameText {
+  display: block;
+}
+
 @-webkit-keyframes spin {
   to {
     -webkit-transform: rotate(360deg);
@@ -446,5 +492,9 @@ hr {
 
   #ArticleStats {
     width: 30vw;
+  }
+
+  .listLink {
+    margin-left: 1vw;
   }
 }

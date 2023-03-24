@@ -77,6 +77,18 @@
         <h3>Images:</h3>
         <div id="images"></div>
       </div>
+      <form
+        action="/api/upload/articlePhotos"
+        method="POST"
+        id="ImageUpload"
+        enctype="multipart/form-data"
+      >
+        <input type="file" name="Image" id="Image" />
+        <br />
+        <input type="text" name="Name" id="Name" placeholder="Name" />
+        <br />
+        <button>Upload</button>
+      </form>
       <div id="footer">
         <h3>Footer</h3>
         <!--Links-->

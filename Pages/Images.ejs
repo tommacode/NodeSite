@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <script
+      src="https://cdn.lr-in-prod.com/LogRocket.min.js"
+      crossorigin="anonymous"
+    ></script>
+    <script>
+      window.LogRocket && window.LogRocket.init("rwfvin/tomblakeme");
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap"
+      rel="stylesheet"
+    />
+    <script src="/login.js"></script>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Photos | Tomblake.me</title>
+    <link rel="stylesheet" href="css.css" />
+  </head>
+  <body>
+    <nav>
+      <a href="/login" class="listLink" style="font-size: 1rem" id="loginInfo"
+        >Not logged in</a
+      >
+      <ul>
+        <li><a class="listLink" href="/">Home</a></li>
+        <li><a class="listLink" href="/projects">Articles</a></li>
+        <li><a class="listLink" href="/Images">Photos</a></li>
+      </ul>
+    </nav>
+
+    <h1>Photo Gallery</h1>
+    <h3>(Beta Test)</h3>
+    <% if (!None) { %> <% for (let i = 0; i < PhotoList.length; i++) { %>
+    <div class="PictureFrameWrapper">
+      <div class="PictureFrame">
+        <img
+          src="/photos/<%= PhotoList[i].Path %>"
+          alt="Drone Image 1"
+          style="width: 100%"
+        />
+        <h3 class="PictureFrameTitle"><%= PhotoList[i].Name %></h3>
+      </div>
+      <div class="PictureFrameText">
+        <p>Location: <%= PhotoList[i].Location %></p>
+        <p>Description: <%= PhotoList[i].Description %></p>
+      </div>
+    </div>
+    <% } %> <% } else { %>
+    <h1>No images at the moment</h1>
+    <% } %>
+  </body>
+</html>

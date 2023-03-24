@@ -85,6 +85,16 @@ create table VerifyEmail(
     Code VARCHAR(255)
 );
 
+create table Photos(
+    ID INT AUTO_INCREMENT PRIMARY KEY,
+    Time TIMESTAMP,
+    Path VARCHAR(255),
+    Name VARCHAR(255),
+    Location VARCHAR(255),
+    Description TEXT,
+    Visibility INT DEFAULT 0
+)
+
 Essential database actions that can't be done in the ui
 
 Make a user sudo
