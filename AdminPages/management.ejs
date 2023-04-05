@@ -41,7 +41,12 @@
       <a href="/login" class="listLink" style="font-size: 1rem" id="loginInfo"
         >Not logged in</a
       >
-      <ul>
+      <div id="BurgerWrapper" onclick="OpenMenu()">
+        <div class="BurgerLine"></div>
+        <div class="BurgerLine"></div>
+        <div class="BurgerLine"></div>
+      </div>
+      <ul class="hidden">
         <li><a class="listLink" href="/">Home</a></li>
         <li><a class="listLink" href="/projects">Articles</a></li>
         <li><a class="listLink" href="/Images">Images</a></li>
@@ -151,6 +156,16 @@
               alert("Error: " + data.message);
             }
           });
+      }
+      //Make the menu open and close
+      function OpenMenu() {
+        //Get the ul that is a direct child of the nav
+        var element = document.querySelector("nav > ul");
+        if (element.className == "hidden") {
+          element.className = "";
+        } else {
+          element.className = "hidden";
+        }
       }
     </script>
   </body>

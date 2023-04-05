@@ -183,19 +183,14 @@ nav {
 nav ul,
 .navStyle ul {
   list-style-type: none;
-  display: flex;
-  text-align: right;
-  float: right;
+  text-align: center;
 }
 
 nav ul li a,
 .navStyle ul li a {
-  padding: 0;
-  margin: 0;
   color: var(--text-color);
   text-decoration: none;
   font-weight: 200;
-  padding-left: 5vw;
 }
 
 #LoadingScreen {
@@ -404,6 +399,27 @@ hr {
   display: none;
   animation: slideOutDown 0.5s ease-out forwards;
 }
+
+
+/* ##### Burger Menu Styling #### */
+#BurgerWrapper {
+  float: right;
+  margin-top: 1%;
+}
+
+#BurgerWrapper:hover {
+  cursor: pointer;
+}
+
+.BurgerLine {
+  width: 30px;
+  height: 3px;
+  background-color: var(--text-color);
+  margin: 5px 0;
+  transition: 0.4s;
+}
+
+
 
 @keyframes slideOutDown {
   0% {
