@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Terms Of Service | Tomblake.me</title>
+    <!--Meta Tags-->
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:domain" content="tomblake.me" />
+    <meta
+      name="twitter:title"
+      property="og:title"
+      itemprop="name"
+      content="Terms Of Service"
+    />
+    <meta
+      name="twitter:description"
+      property="og:description"
+      itemprop="description"
+      content="Terms Of Service"
+    />
+    <%- include('Partials/head.html') %>
+  </head>
+  <body>
+    <div id="frosted">
+      <nav><%- include('Partials/nav.html') %></nav>
+      <!--Big header to draw attention-->
+      <header>
+        <h1>Terms Of Service</h1>
+      </header>
+      <div class="borders">
+        <h3>Updated: 5th April 2023</h3>
+        <p>
+          These terms of service (“Terms”) govern your use of
+          https://tomblake.me (“Service”). By using the Service, you agree to
+          these Terms.
+        </p>
+        <ol>
+          <li>Use of Service</li>
+          <ul>
+            <li>
+              You may use the Service for lawful purposes only. You agree not to
+              use the Service for any unlawful, harmful, or fraudulent activity.
+            </li>
+          </ul>
+          <li>User Accounts</li>
+          <ul>
+            <li>
+              In order to access certain features of the Service, you may need
+              to create a user account. You are responsible for maintaining the
+              confidentiality of your account login credentials, and you agree
+              to notify us immediately if you become aware of any unauthorized
+              use of your account.
+            </li>
+            <li>
+              We reserve the right to ban or terminate user accounts at any
+              time, without notice or liability, if we determine, in our sole
+              discretion, that a user has violated these Terms or engaged in any
+              other inappropriate conduct on the Service.
+            </li>
+          </ul>
+        </ol>
+      </div>
+      <footer id="footer"><%- include("Partials/footer.html") %></footer>
+    </div>
+    <script>
+      //Make the menu open and close
+      function OpenMenu() {
+        //Get the ul that is a direct child of the nav
+        var element = document.querySelector("#MenuItems");
+        if (element.className == "hidden") {
+          element.className = "";
+        } else {
+          element.className = "hidden";
+        }
+      }
+    </script>
+  </body>
+</html>

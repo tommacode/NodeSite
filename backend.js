@@ -1799,6 +1799,18 @@ app.get("/api/quickActions/CommentCreation", async (req, res) => {
   }
 });
 
+app.get("/TermsOfService", (req, res) => {
+  const StartTime = new Date().getTime();
+  res.render(__dirname + "/Pages/TermsOfService.ejs");
+  Logs(req, 200, StartTime);
+});
+
+app.get("/PrivacyPolicy", (req, res) => {
+  const StartTime = new Date().getTime();
+  res.render(__dirname + "/Pages/PrivacyPolicy.ejs");
+  Logs(req, 200, StartTime);
+});
+
 app.get("/sitemap.xml", async (req, res) => {
   const StartTime = new Date().getTime();
   //Use xml builder to create the sitemap

@@ -1,20 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <script
-      src="https://cdn.lr-in-prod.com/LogRocket.min.js"
-      crossorigin="anonymous"
-    ></script>
-    <script>
-      window.LogRocket && window.LogRocket.init("rwfvin/tomblakeme");
-    </script>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap"
-      rel="stylesheet"
-    />
-    <script src="/login.js"></script>
     <meta charset="UTF-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -34,31 +20,11 @@
       itemprop="description"
       content="<%= Appetizer %>"
     />
-    <link rel="stylesheet" href="../../../css.css" />
-    <link rel="stylesheet" href="../../../optionalStyling.css" />
-    <script
-      async
-      src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5514928814035588"
-      crossorigin="anonymous"
-    ></script>
+    <%- include('Partials/head.html') %>
   </head>
   <body>
     <div>
-      <nav>
-        <a href="/login" class="listLink" style="font-size: 1rem" id="loginInfo"
-          >Not logged in</a
-        >
-        <div id="BurgerWrapper" onclick="OpenMenu()">
-          <div class="BurgerLine"></div>
-          <div class="BurgerLine"></div>
-          <div class="BurgerLine"></div>
-        </div>
-        <ul class="hidden">
-          <li><a class="listLink" href="/">Home</a></li>
-          <li><a class="listLink" href="/projects">Articles</a></li>
-          <li><a class="listLink" href="/Images">Images</a></li>
-        </ul>
-      </nav>
+      <nav><%- include('Partials/nav.html') %></nav>
       <!--Big header to draw attention-->
       <header>
         <h1><%= Title %></h1>
@@ -247,26 +213,7 @@
       </div>
       <% } %>
     </div>
-    <div id="footer">
-      <h3>Footer</h3>
-      <!--Links-->
-      <ul class="linkBar">
-        <li>
-          <a
-            target="_blank"
-            href="https://github.com/tommacode"
-            class="listLink"
-            >My Github</a
-          >
-        </li>
-        <li>
-          <a target="_blank" href="https://tomhasawebsite.com" class="listLink"
-            >Other Website</a
-          >
-        </li>
-        <li><a href="#" class="listLink">Back to the top!</a></li>
-      </ul>
-    </div>
+    <footer id="footer"><%- include('Partials/footer.html') %></footer>
     <% if (SudoUser == true) { %>
     <script>
       function RestoreComment(CommentID) {
@@ -425,7 +372,7 @@
       }
       function OpenMenu() {
         //Get the ul that is a direct child of the nav
-        var element = document.querySelector("nav > ul");
+        var element = document.querySelector("#MenuItems");
         if (element.className == "hidden") {
           element.className = "";
         } else {
