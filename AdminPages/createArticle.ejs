@@ -75,6 +75,16 @@
             style="width: 25vw"
             class="textField"
           />
+          <!-- Create a div with combo boxes -->
+          <div id="comboWrapper">
+            <select id="combo" onchange="ComboChange()">
+              <% for (i = 0; i < Categories.length; i++) { %>
+              <option value="<%- Categories[i].ID %>">
+                <%- Categories[i].Name %>
+              </option>
+              <% } %>
+            </select>
+          </div>
           <br />
           <a type="button" onclick="SubmitNew()" id="clearBtn">Create</a>
         </form>
@@ -202,12 +212,14 @@
           var content = document.getElementById("Content-field").value;
           var tags = document.getElementById("tags").value;
           var visibility = document.getElementById("VisOutput").innerHTML;
+          var category = document.getElementById("combo").value;
           var data = {
             title: title,
             appetizer: appetizer,
             content: content,
             tags: tags,
             visibility: visibility,
+            category: category,
           };
           var http = new XMLHttpRequest();
           http.open("POST", "/api/projects/new", true);

@@ -104,14 +104,27 @@
           document.getElementById("LoadingScreen").style.display = "none";
         }
         //Send http request to get the projects
+        function indexof(ID, CategoryArray) {
+          for (i = 0; i < CategoryArray.length; i++) {
+            if (CategoryArray[i] == ID) {
+              return i;
+            }
+          }
+        }
         var http = new XMLHttpRequest();
         http.open("GET", "/api/projects", true);
         http.send();
         http.onreadystatechange = function () {
           if (this.readyState == 4) {
             var projects = JSON.parse(this.responseText);
-            if (projects.length > 0) {
+            if (projects.Projects.length > 0) {
+              let = CategoryArray = [];
+              for (i = 0; i < projects.Categories.length; i++) {
+                CategoryArray.push(projects.Categories[i].ID.toString());
+                CategoryArray.push(projects.Categories[i].Name);
+              }
               //reverse for loop
+              projects = projects.Projects;
               for (var i = projects.length - 1; i >= 0; i--) {
                 var project = projects[i];
                 var projectDiv = document.createElement("div");
@@ -143,9 +156,10 @@
                   Time.substring(8, 10) +
                   ", " +
                   Time.substring(0, 4);
-
                 var dashedTitle = project.Title.replaceAll(" ", "-");
-                projectDiv.innerHTML = `<a href="/projects/${dashedTitle}"><p style='float: right;'>${Time}</p><h3>${project.Title}</h3><p>${project.Appetizer}</p></a><br/><button id="${dashedTitle}" class="clearBtn" onclick="ToggleVisibility('${dashedTitle}')">Toggle Visibility (Currently: ${project.Status})</button><button id="Delete" class="clearBtn" onclick="Delete('${project.Title}')">Delete</button><button id="Edit" class="clearBtn" onclick="Edit('${project.Title}')">Edit</button>`;
+                var projectCategory =
+                  CategoryArray[indexof(project.Catergory, CategoryArray) + 1];
+                projectDiv.innerHTML = `<a href="/read/${dashedTitle}"><p style='float: right;'>${Time}</p><h3>${project.Title}</h3><p>${project.Appetizer}</p></a><p style="float:right">Category: ${projectCategory}</p><br/><button id="${dashedTitle}" class="clearBtn" onclick="ToggleVisibility('${dashedTitle}')">Toggle Visibility (Currently: ${project.Status})</button><button id="Edit" class="clearBtn" onclick="Edit('${project.Title}')">Edit</button>`;
                 document.getElementById("projects").appendChild(projectDiv);
               }
             }

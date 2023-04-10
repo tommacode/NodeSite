@@ -22,12 +22,12 @@
     />
     <%- include('Partials/head.html') %>
   </head>
-  <body>
+  <body onload="ChangeCategoryHeader()">
     <div>
-      <nav><%- include('Partials/nav.html') %></nav>
+      <nav><%- include('Partials/nav.ejs') %></nav>
       <!--Big header to draw attention-->
       <header>
-        <h1>Articles</h1>
+        <h1 id="CategoryHeader">.</h1>
       </header>
       <!--Search-->
       <div class="borders">
@@ -43,7 +43,7 @@
       <div id="projects">
         <% for (i = 0; i < Articles.length; i++) { %>
           <div class="borders" >
-            <a href="/projects/<%= Articles[i].Title.replaceAll(" ", "-") %>" style="color: inherit;">
+            <a href="/read/<%= Articles[i].Title.replaceAll(" ", "-") %>" style="color: inherit;">
               <p style="float: right;"><%= Articles[i].Time %></p>
               <h3><%= Articles[i].Title %></h3>
               <% if (User == true) {%>
@@ -81,6 +81,14 @@
           } else {
             element.className = "hidden";
           }
+        }
+
+        function ChangeCategoryHeader() {
+          let url = window.location.href;
+          let urlSplit = url.split("/");
+          let category = urlSplit[urlSplit.length - 1];
+          let header = document.getElementById("CategoryHeader");
+          header.innerHTML = category;
         }
       </script>
     </div>

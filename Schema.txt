@@ -21,6 +21,12 @@ create table Projects(
     Comments TEXT,
     Likes INT,
     Status VARCHAR(8)
+    Catergory INT
+);
+
+create table Catergories(
+    ID INT AUTO_INCREMENT PRIMARY KEY,
+    Name VARCHAR(255)
 );
 
 create table Comments(
@@ -113,4 +119,12 @@ DELETE FROM Users WHERE Username = '';
 
 All changes to the tables
 
-ALTER TABLE Users ADD COLUMN EmailVerified INT DEFAULT 0;
+ALTER TABLE Projects ADD COLUMN Catergory INT;
+
+//Create three catergories called "News", "Projects", "Tutorials"
+INSERT INTO Catergories (Name) VALUES ("News");
+INSERT INTO Catergories (Name) VALUES ("Projects");
+INSERT INTO Catergories (Name) VALUES ("Tutorials");
+
+
+//Create the new table as well

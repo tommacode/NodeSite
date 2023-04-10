@@ -1,0 +1,33 @@
+<a href="/login" class="listLink" style="font-size: 1rem" id="loginInfo"
+  >Not logged in</a
+>
+<div id="BurgerWrapper" onclick="OpenMenu()">
+  <div class="BurgerLine"></div>
+  <div class="BurgerLine"></div>
+  <div class="BurgerLine"></div>
+</div>
+<div class="hidden" id="MenuItems">
+  <ul>
+    <li><a class="listLink" href="/">Home</a></li>
+    <% for (let i = 0; i < categories.length; i++) { %>
+    <li>
+      <a class="listLink" href="/articles/<%= categories[i].Name %>">
+        <%= categories[i].Name %>
+      </a>
+    </li>
+    <% } %>
+    <li><a class="listLink" href="/Images">Images</a></li>
+  </ul>
+  <ul class="linkBar">
+    <li>
+      <a target="_blank" href="../../../TermsOfService" class="listLink"
+        >Terms Of Service</a
+      >
+    </li>
+    <li>
+      <a target="_blank" href="../../../PrivacyPolicy" class="listLink"
+        >Privacy Policy</a
+      >
+    </li>
+  </ul>
+</div>

@@ -278,17 +278,80 @@ async function ShowResults() {
 
 ShowResults();
 
+async function GetCategories() {
+  sql = `SELECT Name, ID FROM Catergories`;
+  let [Catergories] = await pool.query(sql);
+  console.log(Catergories);
+  return Catergories;
+}
+
+GetCategories();
 //HTML responses
-app.get("/", (req, res) => {
+app.get("/", async (req, res) => {
   const StartTime = new Date().getTime();
-  res.render(__dirname + "/Pages/index.ejs", { Articles: Cache });
+  res.render(__dirname + "/Pages/index.ejs", {
+    Articles: Cache,
+    categories: await GetCategories(),
+  });
   Logs(req, 200, StartTime);
 });
 
-app.get("/projects", async (req, res) => {
+// app.get("/projects", async (req, res) => {
+//   const StartTime = new Date().getTime();
+//   let sql = `SELECT ID, Title, Content, Appetizer, Time FROM Projects WHERE Status = 1 ORDER BY ID DESC`;
+//   let [Articles] = await pool.query(sql);
+//   for (let Article of Articles) {
+//     Article.Time = Article.Time.toLocaleString("en-GB", {
+//       day: "numeric",
+//       month: "long",
+//       year: "numeric",
+//     });
+//   }
+//   UserID = await GetUserID(req.cookies.Auth, req);
+//   if (UserID == null) {
+//     res.render(__dirname + "/Pages/NavPage.ejs", {
+//       User: false,
+//       Articles: Articles,
+//     });
+//     Logs(req, 200, StartTime);
+//     return;
+//   }
+//   sql = `SELECT count(*) FROM Views WHERE UserID = ?`;
+//   const [check] = await pool.query(sql, [UserID]);
+//   if (check[0]["count(*)"] == 0) {
+//     for (i = 0; i < Articles.length; i++) {
+//       Articles[i].Viewed = false;
+//     }
+//     res.render(__dirname + "/Pages/NavPage.ejs", {
+//       User: true,
+//       Articles: Articles,
+//     });
+//     Logs(req, 200, StartTime);
+//     return;
+//   }
+//   for (i = 0; i < Articles.length; i++) {
+//     sql = `SELECT count(*) FROM Views WHERE UserID = ? AND Project = ?`;
+//     const [view] = await pool.query(sql, [UserID, Articles[i].ID]);
+//     Articles[i].Viewed = view[0]["count(*)"] == 1;
+//   }
+//   res.render(__dirname + "/Pages/NavPage.ejs", {
+//     User: true,T
+//     Articles: Articles,
+//   });
+//   Logs(req, 200, StartTime);
+// });
+
+app.get("/articles/:Category", async (req, res) => {
   const StartTime = new Date().getTime();
-  let sql = `SELECT ID, Title, Content, Appetizer, Time FROM Projects WHERE Status = 1 ORDER BY ID DESC`;
-  let [Articles] = await pool.query(sql);
+  let sql = "SELECT ID FROM Catergories WHERE Name = ?";
+  const [result] = await pool.query(sql, [req.params.Category]);
+  if (result.length == 0) {
+    res.status(404).sendFile(__dirname + "/Pages/404.html");
+    Logs(req, 404, StartTime);
+    return;
+  }
+  sql = `SELECT ID, Title, Content, Appetizer, Time FROM Projects WHERE Status = 1 AND Catergory = ? ORDER BY ID DESC`;
+  let [Articles] = await pool.query(sql, [result[0].ID]);
   for (let Article of Articles) {
     Article.Time = Article.Time.toLocaleString("en-GB", {
       day: "numeric",
@@ -301,6 +364,7 @@ app.get("/projects", async (req, res) => {
     res.render(__dirname + "/Pages/NavPage.ejs", {
       User: false,
       Articles: Articles,
+      categories: await GetCategories(),
     });
     Logs(req, 200, StartTime);
     return;
@@ -326,6 +390,7 @@ app.get("/projects", async (req, res) => {
   res.render(__dirname + "/Pages/NavPage.ejs", {
     User: true,
     Articles: Articles,
+    categories: await GetCategories(),
   });
   Logs(req, 200, StartTime);
 });
@@ -339,6 +404,7 @@ app.get("/Images", async (req, res) => {
   res.render(__dirname + "/Pages/Images.ejs", {
     PhotoList: PhotoList,
     None: false,
+    categories: await GetCategories(),
   });
   Logs(req, 200, StartTime);
 });
@@ -442,6 +508,7 @@ app.get("/myAccount", async (req, res) => {
       Sessions: Sessions,
       ProfilePicture: pfp[0].ProfilePicture,
       PfpRateLimit: RateLimit,
+      categories: await GetCategories(),
     });
     Logs(req, 200, StartTime);
   }
@@ -457,19 +524,17 @@ app.get("/api/projects", async (req, res) => {
     Logs(req, 401, StartTime);
     return;
   }
-  const cookie = req.cookies;
   let sql;
-  if (await Authorised(cookie["Auth"], pool)) {
-    sql = "SELECT Time,Title,Appetizer,Status FROM Projects";
-  } else {
-    sql = `SELECT Time,Title,Appetizer,Status FROM Projects WHERE Status = 1`;
-  }
+  sql = "SELECT Time,Title,Appetizer,Status,Catergory FROM Projects";
   const [result] = await pool.query(sql);
-  res.send(result);
+  sql = "SELECT ID, Name FROM Catergories";
+  const [result2] = await pool.query(sql);
+  res.send({ Projects: result, Categories: result2 });
   Logs(req, 200, StartTime);
 });
+``;
 
-app.get("/projects/*", async (req, res) => {
+app.get("/read/*", async (req, res) => {
   const StartTime = new Date().getTime();
   let project = req.path.split("/");
   project.shift();
@@ -587,6 +652,7 @@ app.get("/projects/*", async (req, res) => {
     Comments: comments,
     UserID: UserID,
     SudoUser: SudoUser,
+    categories: await GetCategories(),
   });
   Logs(req, 200, StartTime);
 });
@@ -945,6 +1011,8 @@ app.post("/api/projects/new", async (req, res) => {
   let Content = req.body.content;
   let tags = req.body.tags;
   let Status = req.body.visibility;
+  let Category = req.body.category;
+  console.log(req.body);
   if (Status == "Public") {
     Status = "1";
   } else {
@@ -955,19 +1023,19 @@ app.post("/api/projects/new", async (req, res) => {
 
   if (await Authorised(password, pool)) {
     //Send Email With sendgrid
-    const msg = {
-      to: process.env.EMAIL,
-      from: process.env.SENDER_EMAIL,
-      subject: "New Project Created",
-      text: `Hello,\n\nSomeone has successfully created a new article on the website (tomblake.me) the details are: Title: ${title} Appetizer: ${appetizer} Content: ${Content} Tags: ${tags} Status: ${Status}`,
-    };
-    sgMail.send(msg);
+    // const msg = {
+    //   to: process.env.EMAIL,
+    //   from: process.env.SENDER_EMAIL,
+    //   subject: "New Project Created",
+    //   text: `Hello,\n\nSomeone has successfully created a new article on the website (tomblake.me) the details are: Title: ${title} Appetizer: ${appetizer} Content: ${Content} Tags: ${tags} Status: ${Status}`,
+    // };
+    // sgMail.send(msg);
     //Get current time as datetime
     const date = new Date();
     const datetime = date.toISOString().slice(0, 19).replace("T", " ");
-    const sql = `INSERT INTO Projects (Time, Title, Appetizer, Content, Tags, Status, Likes) VALUES (?, ?, ?, ?, ?, ?, 0)`;
+    const sql = `INSERT INTO Projects (Time, Title, Appetizer, Content, Tags, Status, Likes, Catergory) VALUES (?, ?, ?, ?, ?, ?, 0, ?)`;
     await pool
-      .query(sql, [datetime, title, appetizer, Content, tags, Status])
+      .query(sql, [datetime, title, appetizer, Content, tags, Status, Category])
       .then(() => {
         res.send(
           `Successfully added project the visibility is set to ${Status}`
@@ -1059,7 +1127,10 @@ app.get("/management/createArticle", async (req, res) => {
   const Cookies = req.cookies;
   if (await Authorised(Cookies["Auth"], pool)) {
     Images = fs.readdirSync(process.env.ArticlePhotosPath);
-    res.render(__dirname + "/AdminPages/createArticle.ejs", { Images: Images });
+    res.render(__dirname + "/AdminPages/createArticle.ejs", {
+      Images: Images,
+      Categories: await GetCategories(),
+    });
     Logs(req, 200, StartTime);
   } else {
     res.redirect("/login");
@@ -1799,15 +1870,19 @@ app.get("/api/quickActions/CommentCreation", async (req, res) => {
   }
 });
 
-app.get("/TermsOfService", (req, res) => {
+app.get("/TermsOfService", async (req, res) => {
   const StartTime = new Date().getTime();
-  res.render(__dirname + "/Pages/TermsOfService.ejs");
+  res.render(__dirname + "/Pages/TermsOfService.ejs", {
+    categories: await GetCategories(),
+  });
   Logs(req, 200, StartTime);
 });
 
-app.get("/PrivacyPolicy", (req, res) => {
+app.get("/PrivacyPolicy", async (req, res) => {
   const StartTime = new Date().getTime();
-  res.render(__dirname + "/Pages/PrivacyPolicy.ejs");
+  res.render(__dirname + "/Pages/PrivacyPolicy.ejs", {
+    categories: await GetCategories(),
+  });
   Logs(req, 200, StartTime);
 });
 
@@ -1845,6 +1920,12 @@ app.get("/sitemap.xml", async (req, res) => {
   res.header("Content-Type", "application/xml");
   res.send(sitemap.end({ pretty: true }));
   Logs(req, 200, StartTime);
+});
+
+app.use((req, res, next) => {
+  const StartTime = new Date().getTime();
+  res.status(404).sendFile(__dirname + "/Pages/404.html");
+  Logs(req, 404, StartTime);
 });
 
 app.listen(process.env.PORT, () => {

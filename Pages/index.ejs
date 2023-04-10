@@ -23,7 +23,7 @@
   </head>
   <body>
     <div id="frosted">
-      <nav><%- include('Partials/nav.html') %></nav>
+      <nav><%- include('Partials/nav.ejs', { categories: categories }) %></nav>
       <!--Big header to draw attention-->
       <header>
         <h1>I am <span>Tom</span></h1>
@@ -96,7 +96,7 @@
         <p><%- Articles[i].Content %></p>
         <a
           id="homeArticleLink"
-          href="/projects/<%- Articles[i].Title.replace(/ /g,'-') %>"
+          href="/read/<%- Articles[i].Title.replace(/ /g,'-') %>"
           >Read More
         </a>
       </div>
