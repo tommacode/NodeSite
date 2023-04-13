@@ -281,7 +281,6 @@ ShowResults();
 async function GetCategories() {
   sql = `SELECT Name, ID FROM Catergories`;
   let [Catergories] = await pool.query(sql);
-  console.log(Catergories);
   return Catergories;
 }
 
@@ -406,12 +405,6 @@ app.get("/Images", async (req, res) => {
     None: false,
     categories: await GetCategories(),
   });
-  Logs(req, 200, StartTime);
-});
-
-app.get("/createArticle", (req, res) => {
-  const StartTime = new Date().getTime();
-  res.sendFile(path.join(__dirname, "Pages", "createArticle.html"));
   Logs(req, 200, StartTime);
 });
 
@@ -657,6 +650,12 @@ app.get("/read/*", async (req, res) => {
   Logs(req, 200, StartTime);
 });
 
+app.get("/projects/*", (req, res) => {
+  const StartTime = new Date().getTime();
+  res.redirect("/read/" + req.params[0]);
+  Logs(req, 301, StartTime);
+});
+
 app.get("/photos/:photo", (req, res) => {
   const StartTime = new Date().getTime();
   const photo = req.params.photo;
@@ -833,7 +832,6 @@ app.post("/api/projects/:project/comment", async (req, res) => {
       status: false,
       message: "You have commented too many times. Try again later.",
     });
-    console.log("Rate limit reached by (" + UserID + ")");
     return;
   }
   let project = req.params.project;
@@ -1012,7 +1010,6 @@ app.post("/api/projects/new", async (req, res) => {
   let tags = req.body.tags;
   let Status = req.body.visibility;
   let Category = req.body.category;
-  console.log(req.body);
   if (Status == "Public") {
     Status = "1";
   } else {
@@ -1023,13 +1020,13 @@ app.post("/api/projects/new", async (req, res) => {
 
   if (await Authorised(password, pool)) {
     //Send Email With sendgrid
-    // const msg = {
-    //   to: process.env.EMAIL,
-    //   from: process.env.SENDER_EMAIL,
-    //   subject: "New Project Created",
-    //   text: `Hello,\n\nSomeone has successfully created a new article on the website (tomblake.me) the details are: Title: ${title} Appetizer: ${appetizer} Content: ${Content} Tags: ${tags} Status: ${Status}`,
-    // };
-    // sgMail.send(msg);
+    const msg = {
+      to: process.env.EMAIL,
+      from: process.env.SENDER_EMAIL,
+      subject: "New Project Created",
+      text: `Hello,\n\nSomeone has successfully created a new article on the website (tomblake.me) the details are: Title: ${title} Appetizer: ${appetizer} Content: ${Content} Tags: ${tags} Status: ${Status}`,
+    };
+    sgMail.send(msg);
     //Get current time as datetime
     const date = new Date();
     const datetime = date.toISOString().slice(0, 19).replace("T", " ");
@@ -1060,10 +1057,10 @@ app.post("/api/projects/:id/edit", async (req, res) => {
     let tags = req.body.tags;
 
     //Replace all " with ""
-    title = title.replaceAll('"', '""');
-    appetizer = appetizer.replaceAll('"', '""');
-    content = content.replaceAll('"', '""');
-    tags = tags.replaceAll('"', '""');
+    // title = title.replaceAll('"', '""');
+    // appetizer = appetizer.replaceAll('"', '""');
+    // content = content.replaceAll('"', '""');
+    // tags = tags.replaceAll('"', '""');
     //sql = `UPDATE Projects SET Title = "${title}", Appetizer = "${appetizer}", Content = "${Content}", Tags = "${tags}" WHERE id = ${id}`;
     //Rewrite statment to use prepared statements
     let sql = `UPDATE Projects SET Title = ?, Appetizer = ?, Content = ?, Tags = ? WHERE id = ?`;
@@ -1114,6 +1111,7 @@ app.get("/management", async (req, res) => {
       Requests: RequestsCount,
       AverageProcessTime: AverageProcessTime,
       AverageRequestsPerSecond: AverageRequestsPerSecond,
+      categories: await GetCategories(),
     });
     Logs(req, 200, StartTime);
   } else {
@@ -1129,7 +1127,7 @@ app.get("/management/createArticle", async (req, res) => {
     Images = fs.readdirSync(process.env.ArticlePhotosPath);
     res.render(__dirname + "/AdminPages/createArticle.ejs", {
       Images: Images,
-      Categories: await GetCategories(),
+      categories: await GetCategories(),
     });
     Logs(req, 200, StartTime);
   } else {
@@ -1205,7 +1203,10 @@ app.get("/management/manageUsers", async (req, res) => {
         Users[i].Username = "&lt " + Users[i].Username + " &gt";
       }
     }
-    res.render(__dirname + "/AdminPages/manageUsers.ejs", { Users: Users });
+    res.render(__dirname + "/AdminPages/manageUsers.ejs", {
+      Users: Users,
+      categories: await GetCategories(),
+    });
     Logs(req, 200, StartTime);
   } else {
     res.redirect("/login");
@@ -1248,6 +1249,7 @@ app.get("/management/managePhotos", async (req, res) => {
     res.render(__dirname + "/AdminPages/ManagePhotos.ejs", {
       Images: Images,
       ImageData: ImageData,
+      categories: await GetCategories(),
     });
     Logs(req, 200, StartTime);
   } else {
@@ -1902,17 +1904,24 @@ app.get("/sitemap.xml", async (req, res) => {
   sitemap
     .ele("url")
     .ele("loc", `${process.env.Protocol}://${process.env.Domain}/SignUp`);
-  sitemap
-    .ele("url")
-    .ele("loc", `${process.env.Protocol}://${process.env.Domain}/projects`);
-  let sql = "SELECT Title FROM Projects WHERE Status = 1";
+  sql = "SELECT * FROM Catergories";
+  const [Categories] = await pool.query(sql);
+  for (let i = 0; i < Categories.length; i++) {
+    sitemap
+      .ele("url")
+      .ele(
+        "loc",
+        `${process.env.Protocol}://${process.env.Domain}/articles/${Categories[i].Name}`
+      );
+  }
+  sql = "SELECT Title FROM Projects WHERE Status = 1";
   const [results] = await pool.query(sql);
   for (let i = 0; i < results.length; i++) {
     sitemap
       .ele("url")
       .ele(
         "loc",
-        `${process.env.Protocol}://${process.env.Domain}/projects/${results[
+        `${process.env.Protocol}://${process.env.Domain}/read/${results[
           i
         ].Title.replace(/ /g, "-")}`
       );

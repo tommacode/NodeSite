@@ -7,6 +7,9 @@ fetch("/api/user")
   })
   .then((data) => {
     if (data != undefined && data.Locked == 0) {
+      //## #########
+      // The user is successfully logged in and their account is not locked
+      //## #########
       if (window.outerWidth < 700) {
         document.getElementById("loginInfo").innerHTML = data.Username;
       } else {
@@ -26,17 +29,23 @@ fetch("/api/user")
         }
       }
     } else if (data != undefined && data.Locked == 1) {
+      //## #########
+      // If the user is logged in but their account is locked
+      //## #########
       alert(
         "Your account has been locked by an admin. You will be logged out. Redirecting to the login page"
       );
       window.location.href = "/login";
     } else {
-      if (window.location.href.includes("/projects/")) {
+      //## #########
+      // If the user is not logged in at all
+      //## #########
+      if (window.location.href.includes("/read/")) {
         document.querySelector(".borders h3").style.display = "none";
         document.querySelector(".borders form").style.display = "none";
         document.getElementById(
           "commentMessage"
-        ).innerHTML = `<a class="listLink" href="/login">Login</a> to comment`;
+        ).innerHTML = `<a style="color: inherit;" href="/login">Login</a> To write a comment`;
         //Disable the functions to like on click
         document.querySelectorAll(".CommentLikeBtn").forEach((element) => {
           element.onclick = function () {

@@ -298,6 +298,17 @@ img {
   font-size: 1rem;
 }
 
+#commentUsername {
+  padding: 10px;
+  border-radius: 10px;
+  background-color: var(--color-dark);
+  max-width: 96%;
+  min-width: 96%;
+  min-height: 10vh;
+  color: var(--text-color);
+  font-size: 1rem;
+}
+
 #SubmitComment {
   background-color: var(--color-darker);
   color: var(--text-color);
@@ -417,6 +428,7 @@ hr {
   background-color: var(--text-color);
   margin: 5px 0;
   transition: 0.4s;
+  border-radius: 5px;
 }
 
 
