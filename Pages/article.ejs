@@ -30,41 +30,33 @@
         <h1><%= Title %></h1>
       </header>
       <!--Project Thumbnails-->
-      <p style="float: right" id="date"><%= Time %></p>
+      <p style="float: right" id="date" class="AccentColour"><%= Time %></p>
     </div>
     <div id="Like">
       <% if (Liked == true) { %>
       <a
         onclick="like(ArticleLikeTimeArray)"
-        style="
-          font-size: 2rem;
-          color: var(--text-color);
-          text-decoration: none;
-          cursor: pointer;
-        "
+        style="font-size: 2rem; text-decoration: none; cursor: pointer"
         id="likeBtn"
+        class="AccentColour"
         >♥</a
       >
       <p id="likeBtnCount"><%= Likes %></p>
       <% } else { %>
       <a
         onclick="like(ArticleLikeTimeArray)"
-        style="
-          font-size: 2rem;
-          color: var(--text-color);
-          text-decoration: none;
-          cursor: pointer;
-        "
+        style="font-size: 2rem; text-decoration: none; cursor: pointer"
         id="likeBtn"
+        class="AccentColour"
         >♡</a
       >
-      <p id="likeBtnCount"><%= Likes %></p>
+      <p id="likeBtnCount" class="AccentColour"><%= Likes %></p>
       <% } %>
     </div>
 
     <div class="borders">
-      <h3><%= Appetizer %></h3>
-      <p id="content-text"><%- Content %></p>
+      <h3 class="AccentColour"><%= Appetizer %></h3>
+      <div id="content-text"><%- Content %></div>
     </div>
     <div class="borders" id="WriteComment">
       <h3 id="commentMessage">Write a comment:</h3>
@@ -100,11 +92,11 @@
           alt="Profile Picture"
           style="float: left"
         />
-        <p style="float: right"><%= Comments[i].Time %></p>
+        <p style="float: right" class="AccentColour"><%= Comments[i].Time %></p>
         <h4 style="float: left"><%- Comments[i].Username %></h4>
         <br />
         <p style="float: right"></p>
-        <p style="word-wrap: break-word; max-width: 80%">
+        <p style="word-wrap: break-word; max-width: 80%" class="textDim">
           <%= Comments[i].Content %>
         </p>
         <% if (Comments[i].ID == UserID || SudoUser == true) { %>

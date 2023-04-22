@@ -634,7 +634,7 @@ app.get("/read/*", async (req, res) => {
   result[0].Content = result[0].Content.replace("<home>", "");
   result[0].Content = result[0].Content.replace("</home>", "");
   result[0].Content = result[0].Content.replace(/""/g, /"/);
-
+  //Add <p class="textDim"> to the start of the content and </p> to the end
   res.render(__dirname + "/Pages/article.ejs", {
     Title: result[0].Title,
     Content: result[0].Content,

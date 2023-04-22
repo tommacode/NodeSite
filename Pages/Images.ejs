@@ -23,8 +23,14 @@
         <h3 class="PictureFrameTitle"><%= PhotoList[i].Name %></h3>
       </div>
       <div class="PictureFrameText">
-        <p>Location: <%= PhotoList[i].Location %></p>
-        <p>Description: <%= PhotoList[i].Description %></p>
+        <p>
+          <span class="AccentColour">Location:</span> <%= PhotoList[i].Location
+          %>
+        </p>
+        <p>
+          <span class="AccentColour">Description:</span> <%=
+          PhotoList[i].Description %>
+        </p>
       </div>
     </div>
     <% } %> <% } else { %>

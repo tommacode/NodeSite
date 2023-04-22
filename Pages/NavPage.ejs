@@ -44,14 +44,14 @@
         <% for (i = 0; i < Articles.length; i++) { %>
           <div class="borders" >
             <a href="/read/<%= Articles[i].Title.replaceAll(" ", "-") %>" style="color: inherit;">
-              <p style="float: right;"><%= Articles[i].Time %></p>
+              <p style="float: right;" class="AccentColour"><%= Articles[i].Time %></p>
               <h3><%= Articles[i].Title %></h3>
               <% if (User == true) {%>
               <% if (Articles[i].Viewed == false) { %>
-              <p style="float: right;">Unread</p>
+              <p style="float: right;" class="AccentColour">Unread</p>
               <% } %>
               <% } %>
-              <p><%= Articles[i].Appetizer %></p>
+              <p class="textDim"><%= Articles[i].Appetizer %></p>
             </a>
           </div> 
         <%} %>

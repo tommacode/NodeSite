@@ -3,9 +3,11 @@
   font-family: "Poppins", sans-serif;
   z-index: 0;
   max-width: 100%;
-  --color-dark: #232323;
-  --color-darker: #1b1b1b;
-  --text-color: #05b2dc;
+  --color-dark: #161616;
+  --color-darker: #0e0d0d;
+  --text-color: #ffffff;
+  --text-accent: #0beb56;
+  --text-dim: #afafaf;
 }
 
 ::-webkit-scrollbar {
@@ -228,6 +230,29 @@ img {
   padding-bottom: 3vh;
 }
 
+.AccentColour {
+  color: var(--text-accent);
+}
+
+.AccentHover {
+  border: none;
+  color: var(--text-accent);
+  font-size: 0.875rem;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0)),
+    linear-gradient(to top, var(--text-accent), var(--text-accent));
+  background-size: 10% 1em, 0 0.15em;
+  background-position: 50% 100%, 50% 100%;
+  background-repeat: no-repeat;
+  transition: background-size 400ms;
+  padding-bottom: 5px;
+  cursor: pointer;
+}
+
+.AccentHover:hover,
+.AccentHover:focus {
+  background-size: 0 1em, 75% 0.15em;
+}
+
 .center {
   margin-left: auto;
   margin-right: auto;
@@ -339,11 +364,14 @@ hr {
   margin-right: 1vw;
 }
 
+
 #homeArticleLink {
-  text-decoration: underline;
-  color: var(--text-color);
+  text-decoration: none;
 }
 
+.textDim {
+  color: var(--text-dim);
+}
 
 
 #title,
@@ -364,6 +392,15 @@ hr {
   min-height: 30vh;
 }
 
+
+#content-text h3 {
+  color: var(--text-accent);
+}
+
+#content-text {
+  color: var(--text-dim);
+}
+
 /* Put both elements in #Like on the same line */
 #Like {
   display: flex;
@@ -379,7 +416,7 @@ hr {
 }
 
 .PictureFrame {
-  border: 1px solid var(--text-color);
+  border: 1px solid var(--text-accent);
   border-radius: 10px;
   padding: 5px;
   margin: 5px;

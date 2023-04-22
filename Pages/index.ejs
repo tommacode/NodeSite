@@ -26,12 +26,12 @@
       <nav><%- include('Partials/nav.ejs', { categories: categories }) %></nav>
       <!--Big header to draw attention-->
       <header>
-        <h1>I am <span>Tom</span></h1>
+        <h1>I am <span class="AccentColour">Tom</span></h1>
       </header>
       <!--Bio-->
       <div id="bio">
         <h3>Bio</h3>
-        <p>
+        <p class="textDim">
           I am a student in the UK studying computer science. I am currently
           studying for my GCSEs but I hope to move on to a job in computer
           science
@@ -44,9 +44,11 @@
         <ul>
           <li>
             Programing 🖥️
-            <button id="1" class="clearBtn" onclick="onClick()">Expand</button>
+            <button id="1" class="AccentHover AccentColour" onclick="onClick()">
+              Expand
+            </button>
             <div id="1hide" class="hidden">
-              <p>
+              <p class="textDim">
                 I am a GSCE student studying computer science. I enjoy
                 programming and finding out how things work. I have an interest
                 in many areas of computer science and hope to get a job as a
@@ -56,9 +58,11 @@
           </li>
           <li>
             Databases 📚
-            <button id="2" class="clearBtn" onclick="onClick()">Expand</button>
+            <button id="2" class="AccentHover AccentColour" onclick="onClick()">
+              Expand
+            </button>
             <div id="2hide" class="hidden">
-              <p>
+              <p class="textDim">
                 Databases are very useful for storing data. "Why don't you just
                 use a text file" - Said no one ever.
               </p>
@@ -66,9 +70,11 @@
           </li>
           <li>
             Drones 🛩️
-            <button id="3" class="clearBtn" onclick="onClick()">Expand</button>
+            <button id="3" class="AccentHover AccentColour" onclick="onClick()">
+              Expand
+            </button>
             <div id="3hide" class="hidden">
-              <p>
+              <p class="textDim">
                 You may see some photos from the drone on the website. I think
                 they look quite nice and offer a different perspective. I have a
                 Dji Mini 2 as they are very little and easy to fly.
@@ -77,9 +83,11 @@
           </li>
           <li>
             Web development
-            <button id="4" class="clearBtn" onclick="onClick()">Expand</button>
+            <button id="4" class="AccentHover AccentColour" onclick="onClick()">
+              Expand
+            </button>
             <div id="4hide" class="hidden">
-              <p>
+              <p class="textDim">
                 Currently I own and am the sole contributor to 2 websites. One
                 of which is this one, the other one is a just a static site that
                 I have left in the cloud.
@@ -93,11 +101,12 @@
 
       <div class="borders" id="homeArticles">
         <h3><%= Articles[i].Title %></h3>
-        <p><%- Articles[i].Content %></p>
+        <p class="textDim"><%- Articles[i].Content %></p>
         <a
           id="homeArticleLink"
+          class="AccentColour AccentHover"
           href="/read/<%- Articles[i].Title.replace(/ /g,'-') %>"
-          >Read More
+          >Read More ➡
         </a>
       </div>
       <% } %>
