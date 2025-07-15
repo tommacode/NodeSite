@@ -10,7 +10,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@sendgrid/mail": "^7.7.0",
+    "@sendgrid/mail": "^8.0.0",
     "bad-words": "^3.0.4",
     "bcrypt": "^5.1.0",
     "cookie-parser": "^1.4.6",
